@@ -14,7 +14,7 @@ Updated: 19 October 2026. M0 is in progress; its full acceptance criteria have n
 - Atomic source-record/outbox writes, idempotent source IDs, explicit acknowledgments, and local delete tombstones that reject stale re-insertion.
 - A CLI that replays bundled synthetic observations, searches retained history, reopens the database, reports counts, and cleans up its temporary files.
 - A Windows accessibility experiment that creates only its own synthetic controls on a dedicated UI thread, reads snapshots through a separate client thread, and checks password-field metadata without requesting its text.
-- A proposed CI matrix for synthetic foundation tests on Linux, Windows, and macOS. Remote CI results are not yet observed.
+- A CI matrix for synthetic foundation tests on Linux, Windows, and macOS. The [PR validation run](https://github.com/dvajjala-ui/promteSaver/actions/runs/39205490004) passed all three jobs for implementation commit `bba7f34fc74d16fca1453e886ec0aeb6c407dff4`. This is cross-platform Node foundation evidence, not Mac native-capture validation.
 
 ## Commands
 

@@ -27,6 +27,7 @@ The accepted product direction is an installed Windows/Mac collector that stores
 - `npm run demo`: three retained synthetic records and pending operations survive reopening; search and redaction counts match the fixture.
 - `npm run test:windows`: four owned-control snapshots pass via `TextPattern`, and password metadata is identified without reading it. Line endings are normalized. No external application is inspected.
 - `npm audit --omit=dev --audit-level=high`: zero known production dependency vulnerabilities reported.
+- [GitHub CI](https://github.com/dvajjala-ui/promteSaver/actions/runs/39205490004) passed the synthetic checks and replay on Windows, macOS, and Linux for implementation commit `bba7f34fc74d16fca1453e886ec0aeb6c407dff4`. Work is in draft PR #1 on `codex/m0-foundation`; it is not merged to `main`.
 - No Mac native checks, SQLCipher build, cloud synchronization, or performance/soak targets are validated yet.
 
 ## Next work
