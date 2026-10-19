@@ -1,0 +1,29 @@
+# Secrets and machine-specific settings
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.pfx
+
+# Captured data must never enter the repository
+data/
+captures/
+exports/
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+*.log
+
+# Build products and local tooling
+node_modules/
+target/
+dist/
+.next/
+.turbo/
+coverage/
+.DS_Store
+Thumbs.db
