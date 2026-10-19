@@ -1,6 +1,6 @@
 # Working in promteSaver
 
-This repository currently contains research and implementation planning only. Do not describe an application, installer, recording integration, cloud deployment, or benchmark as implemented unless the repository and observed results establish it.
+This repository contains planning plus an executable M0 synthetic foundation. Read `docs/M0_PROGRESS.md` for what is implemented and tested. There is no installed global recorder, cloud deployment, or validated Mac collector. Do not describe a component or benchmark as implemented unless the repository and observed results establish it.
 
 ## Read first
 

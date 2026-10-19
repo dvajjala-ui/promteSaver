@@ -1,6 +1,6 @@
 # Implementation plan
 
-Prepared: 19 October 2026. Status: ready to begin feasibility work. This package contains a plan, not a working application. Research, native runtime validation, and product validation are separate activities.
+Prepared: 19 October 2026. Status: M0 in progress. This document is the implementation plan; see [M0 progress](M0_PROGRESS.md) for the executable synthetic foundation and measured checks. Research, native runtime validation, and product validation are separate activities.
 
 ## 1. Product objective
 

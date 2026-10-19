@@ -1,6 +1,6 @@
 # promteSaver — implementation planning
 
-Status: researched implementation proposal, 19 October 2026. No application, recorder, cloud service, or AI integration has been installed or implemented.
+Status: executable M0 synthetic foundation, 19 October 2026. Contracts, policy, snapshot reconciliation, an encrypted-record archive, and synthetic tests are implemented. No global recorder, cloud service, or AI integration is installed or enabled.
 
 promteSaver (working product name: Pomte) is a proposed Windows and macOS application that remembers a user's prompting across AI tools. It collects permitted input locally, synchronizes when online, preserves historical prompts, and learns reusable instructions and templates. A desktop picker and later contextual suggestions bring those instructions back while the user works.
 
@@ -8,6 +8,8 @@ The first release targets personal use across the user's Windows PC and Mac. And
 
 ## Start here
 
+- [M0 progress and runnable commands](docs/M0_PROGRESS.md): implementation evidence, storage limitations, and the next native work.
+- [Dependency inventory](docs/DEPENDENCIES.md): pinned packages, licence observations, and packaging limits.
 - [New-chat handoff](docs/HANDOFF.md): current state, reading order, and a ready-to-use continuation prompt.
 - [Conversation summary](docs/CONVERSATION_SUMMARY.md): the user's goals, accepted direction, and how the idea developed.
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md): scope, milestones, acceptance criteria, effort assumptions, and the first engineering tasks.
@@ -40,4 +42,16 @@ Build the historical archive and fast reuse before automatic live completion. Th
 | Complete global recording, perfect credential filtering, universal inline completion | Not a deliverable promise |
 | Product name, business model, public source licence, cloud provider, AI provider | Open; do not block the capture prototype |
 
-The workspace was empty apart from Git metadata when this planning package was created. No existing project instructions or application code were found.
+## Run the synthetic foundation
+
+With Node 24.16.x and npm:
+
+```text
+npm ci --ignore-scripts
+npm run check
+npm run demo
+```
+
+The demo uses bundled synthetic text, makes no network requests, and does not record your keyboard. On Windows, `npm run test:windows` runs a separate owned-control accessibility proof. Read the M0 progress document before interpreting its coverage.
+
+The workspace was empty apart from Git metadata when the initial planning package was created. Implementation now lives in `packages/`, `apps/harness/`, `scripts/`, and `tests/`.

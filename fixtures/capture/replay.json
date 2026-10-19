@@ -1,0 +1,14 @@
+{
+  "description": "Synthetic snapshots; no real conversations or keyboard data.",
+  "deviceId": "synthetic-device",
+  "surface": { "surfaceId": "synthetic-window", "appId": "promtesaver.synthetic", "editorId": "prompt", "classification": "prompt", "protection": "normal", "privateMode": false },
+  "steps": [
+    { "kind": "snapshot", "text": "Research a new project.", "complete": true },
+    { "kind": "snapshot", "text": "Research a new project. Understand the idea first; do not implement yet.", "complete": true },
+    { "kind": "submit" },
+    { "kind": "snapshot", "text": "पहले existing code समझो, फिर changes plan करो 🚀", "complete": true },
+    { "kind": "submit" },
+    { "kind": "snapshot", "text": "Synthetic credential example: password=DO_NOT_RETAIN_CANARY_123", "complete": true },
+    { "kind": "submit" }
+  ]
+}

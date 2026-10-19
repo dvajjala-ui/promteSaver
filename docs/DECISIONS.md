@@ -22,6 +22,8 @@ Planning snapshot: 19 October 2026. “Accepted direction” comes from the conv
 | D16 | Minimal deterministic exclusions before persistence/upload | Proposed necessary design | Filtering after upload does not remove material already disclosed. |
 | D17 | No screenshots, continuous audio, mobile keyboards, or team surveillance in v1 | Proposed scope boundary | Concentrate resources on text collection and reuse. |
 | D18 | Planning and handoff documents published to the user's repository | User requested | Enable implementation in a new chat without relying on conversation history. |
+| D19 | Use Node/TypeScript and encrypted-record SQLite for the first executable synthetic harness | Implemented prototype, 19 October 2026 | Node is available; Rust/native encryption packaging is unverified. This does not replace the planned Rust collector or claim SQLCipher encryption. Revisit before retaining real typing. |
+| D20 | Use a separate UI thread for the owned-control Windows accessibility experiment | Verified on synthetic Windows controls | The same-thread probe exposed no readable pattern; the threaded probe read `TextPattern`. General application coverage remains unproven. |
 
 ## Open decisions
 
