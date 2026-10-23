@@ -27,4 +27,4 @@ No vault read/export privileges, no Groq key, no native app permissions or hidde
 
 ## Verification
 
-Seven worker tests pass in Node VM with Chrome API doubles. Actual recorder code passes Chromium synthetic composer scenarios. The attempted real unpacked worker did not become available in this managed environment; real-site and Windows/Mac browser validation remain open. See [test report](../../docs/TEST_REPORT_V0_9.md). Do not broaden the permission scope to work around a failing selector.
+Seven worker tests pass in Node VM with Chrome API doubles. Actual recorder code passes Chromium synthetic composer scenarios. On Windows, full Playwright Chromium loaded the unpacked worker and passed seven scoped checks, including default-off behavior and no injection before optional site permission. The human permission prompt, injected script after consent, real-site capture, and Edge/macOS validation remain open. See [test report](../../docs/TEST_REPORT_V0_9.md). Do not broaden the permission scope to work around a failing selector.

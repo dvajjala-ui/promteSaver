@@ -247,13 +247,26 @@ test('failed async legacy metadata upgrade leaves the original key file and no o
 test('locking a real HTTP backup import cancels it without adding data after re-unlock',async()=>{
   const bytes=encryptBackup(fixtureSnapshot(),password).toString('base64');
   const directory=dir(),app=await startLocalWeb({directory}),send=client(app);
+  let finishUpload: (()=>void)|undefined;
   try{
     await send('/api/setup','POST',{passphrase:password,confirm:password});
-    const importing=send('/api/backup/import','POST',{backup:bytes,passphrase:password});
+    const body=JSON.stringify({backup:bytes,passphrase:password});
+    // Hold the HTTP body after sending headers. The WorkGate is active while
+    // readBody awaits it, so the lock can deterministically win this race.
+    const importing=new Promise<number>((resolve,reject)=>{
+      const req=httpRequest(app.origin+'/api/backup/import',{method:'POST',headers:{
+        Authorization:`Bearer ${app.token}`,'Content-Type':'application/json',
+        'Content-Length':Buffer.byteLength(body)
+      }},res=>{res.resume();res.on('end',()=>resolve(res.statusCode??0));});
+      req.on('error',reject);req.flushHeaders();
+      let sent=false;finishUpload=()=>{if(!sent){sent=true;req.end(body);}};
+    });
     let pending=false;
-    for(let i=0;i<100;i++){if((await send('/api/status')).data.operation==='backup-import'){pending=true;break;}await delay(2);}
-    assert.equal(pending,true);await send('/api/lock','POST');assert.equal((await importing).status,423);
+    const deadline=Date.now()+3_000;
+    while(Date.now()<deadline){if((await send('/api/status')).data.operation==='backup-import'){pending=true;break;}await delay(5);}
+    assert.equal(pending,true);await send('/api/lock','POST');
+    const release=finishUpload;assert.ok(release);release();assert.equal(await importing,423);
     await send('/api/unlock','POST',{passphrase:password});
     assert.equal(app.vault.archive.queryLibrary({limit:10}).items.length,0);
-  }finally{await app.close();rmSync(directory,{recursive:true,force:true});}
+  }finally{finishUpload?.();await app.close();rmSync(directory,{recursive:true,force:true});}
 });

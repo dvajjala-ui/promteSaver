@@ -10,7 +10,7 @@ The runnable product is a local Node service with a browser UI and an optional u
 | --- | --- | --- |
 | Run on a Windows computer | Source pilot launcher exists; requires Node and browser | Actual Windows setup/restart/upgrade execution |
 | Install like a normal Windows/macOS application | Not delivered | Native compilation, packaged resources, install/uninstall/update, signing/notarization |
-| Automatically save prompts on AI websites | Implemented for opt-in known composers on three hosts, not every website | Installed Chrome/Edge worker plus real ChatGPT/Claude/Gemini layouts, permission and negative-case tests |
+| Automatically save prompts on AI websites | Implemented for opt-in known composers on three hosts; unpacked Chromium worker passes scoped default-off and revocation checks | Human-granted permission, actual content-script injection and real ChatGPT/Claude/Gemini capture in Chrome/Edge |
 | Identify the software/site | Captures include approved browser host only | Native process/window/source adapters; no full URL or conversation title captured |
 | Capture all prompts in all software | Not implemented | Each desktop source needs its own permission-aware adapter and acceptance matrix |
 | Groq summaries and prompt structure | Implemented explicit actions, local key configuration | Real key/model response, network errors, billing and language-quality evaluation |

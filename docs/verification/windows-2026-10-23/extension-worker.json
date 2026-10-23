@@ -1,0 +1,17 @@
+{
+  "scope": "Real unpacked Chromium MV3 worker, real chrome.storage, and a synthetic approved-origin page. No real-site data or localhost traffic.",
+  "passed": [
+    "Actual manifest loaded and service worker started",
+    "No mandatory AI-site host access; incognito explicitly excluded",
+    "Actual worker defaults capture off with empty persistent/session storage",
+    "Worker rejects frames, incognito, wrong origins, privilege escalation and oversize messages",
+    "Session token removal revokes capture while retaining non-sensitive site preference",
+    "Content-script state does not disclose bridge token or provider credentials",
+    "Without optional permission, no content script or panel appears on a synthetic approved-origin page"
+  ],
+  "errors": [],
+  "unverified": [
+    "Human grant of optional host permission, content-script injection after consent, real-site selectors, and live localhost capture"
+  ],
+  "result": "passed"
+}

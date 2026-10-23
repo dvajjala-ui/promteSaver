@@ -20,6 +20,10 @@ No new production dependencies or background model. Real Node profile sampled 12
 
 The new 5,000-item synthetic Windows/Node 24.18.0 benchmark measured explicit recall at 255.20 ms median and 311.11 ms p95 across ten distinct requests, with 89.5 MiB point-in-time Node RSS. Recall still decrypts/scans the library and these numbers exclude the browser. Relevance and time saved need a real user pilot.
 
+On `codex/release-pilot`, full Playwright Chromium 156 loaded the actual unpacked MV3 worker and passed seven scoped checks, including default-off storage, revocation, and absence of script injection before optional host permission. The earlier worker timeout was caused by the probe's Chrome Headless Shell selection. The permission prompt did not resolve in automation, so consented injection and real-site capture remain open. The real Cargo resolver produced a checked-in development `Cargo.lock`; an isolated Rust 1.99.1 `cargo check --locked` reached linking but failed because this Windows installation lacks `kernel32.lib` from the Windows SDK. No native build or installer was produced. See `TEST_REPORT_V0_9.md` and `verification/windows-2026-10-23/extension-worker.json`.
+
+The backup-import cancellation test now holds the HTTP upload body after headers, locks during the active secure operation, then finishes the body to assert rejection and no later mutation. The prior timing-dependent poll missed this race under full-suite load. The updated targeted test and full 147-test check pass on Windows.
+
 ## Most important next work
 
 Run the exact non-sensitive pilot on Windows/Chrome or Edge and macOS, record actual selector/permission failures, fix observed failures with fixture regressions, and test real Groq locally configured. Compile and install native host on the target systems, preserving security boundaries, resolving actual Cargo dependencies and auditing clipboard/download/lifecycle behavior. Keep all-app capture off until each native adapter has consent/exclusion/evidence tests. Validate OS key protection, whole-file encryption, real idle/peak memory and accessibility before distribution.
