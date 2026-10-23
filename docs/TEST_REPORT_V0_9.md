@@ -27,6 +27,8 @@ An isolated Rust 1.99.1 toolchain generated `apps/desktop/src-tauri/Cargo.lock` 
 
 The earlier intermittent backup-import cancellation test failed again under the full suite. Its old 100-poll window could miss request startup, and a completed request could beat the separate lock call. The test now sends HTTP headers while holding the body open, observes the active secure operation, locks the vault, then completes the upload. This deterministically tests the post-await session boundary. After that test change, `node --test tests/async-security.test.ts` passed 15/15 and `npm run check` passed 147/147 with release, contract, TypeScript, and browser syntax checks. `npm run doctor` and `npm run desktop:plan` passed; the doctor still reports no native installer. This does not prove all backup cancellation races on a real device.
 
+The companion popup now checks the current site's optional permission and explains when it is required before enabling capture. It reuses an existing grant without reopening the browser prompt. The actual Chromium core fixture passed with the initial permission-required state and the existing pair/enable/pause flow. Evidence: `verification/windows-2026-10-23/core-browser/report.json` and its synthetic screenshots. This remains a fixture result; the real consent prompt and site layouts still need a human pilot.
+
 ## Executed and passed
 
 | Check | Result | Evidence |

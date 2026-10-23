@@ -24,6 +24,8 @@ On `codex/release-pilot`, full Playwright Chromium 156 loaded the actual unpacke
 
 The backup-import cancellation test now holds the HTTP upload body after headers, locks during the active secure operation, then finishes the body to assert rejection and no later mutation. The prior timing-dependent poll missed this race under full-suite load. The updated targeted test and full 147-test check pass on Windows.
 
+The browser-helper popup now calls `chrome.permissions.contains` for the active supported site, shows a clear permission-required status before consent, and avoids a second permission prompt after a grant. The synthetic Chromium core suite passes this onboarding flow; the human permission dialog and real sites remain open gates.
+
 ## Most important next work
 
 Run the exact non-sensitive pilot on Windows/Chrome or Edge and macOS, record actual selector/permission failures, fix observed failures with fixture regressions, and test real Groq locally configured. Compile and install native host on the target systems, preserving security boundaries, resolving actual Cargo dependencies and auditing clipboard/download/lifecycle behavior. Keep all-app capture off until each native adapter has consent/exclusion/evidence tests. Validate OS key protection, whole-file encryption, real idle/peak memory and accessibility before distribution.

@@ -83,14 +83,15 @@ def main():
             popup_html=re.sub(r'<script\b[^>]*>[\s\S]*?</script>','',(EXT/'popup.html').read_text())
             popup_html=re.sub(r'<link\b[^>]*>','',popup_html)
             popup.set_content(popup_html);popup.add_style_tag(content=(EXT/'popup.css').read_text())
-            popup.add_script_tag(content="""window.__popup={store:{},origins:[],enabled:false,fetches:[]};
+            popup.add_script_tag(content="""window.__popup={store:{},origins:[],enabled:false,permissionGranted:false,fetches:[]};
               window.chrome={storage:{session:{get:async k=>({[k]:__popup.store[k]}),set:async v=>Object.assign(__popup.store,v),remove:async k=>delete __popup.store[k]}},
                 tabs:{query:async()=>[{id:1,url:'https://chatgpt.com/',incognito:false}]},
-                permissions:{request:async v=>{__popup.origins.push(...v.origins);return true;}},
+                permissions:{contains:async()=>__popup.permissionGranted,request:async v=>{__popup.origins.push(...v.origins);__popup.permissionGranted=true;return true;}},
                 runtime:{sendMessage:async m=>{if(m.type==='SET_SITE')__popup.enabled=m.enabled;return {ok:true,enabled:__popup.enabled,canCapture:!!__popup.store['promtesaver.bridge'],hints:false};}}};
               window.fetch=async(url,options)=>{if(options.redirect!=='error'||!options.signal)throw Error('Missing network controls');__popup.fetches.push(url);
                 return new Response(JSON.stringify({writeToken:'b'.repeat(64),expiresAt:new Date(Date.now()+60000).toISOString(),allowedCaptureHosts:['chatgpt.com']}),{headers:{'Content-Type':'application/json'}});};""")
             popup.add_script_tag(content=(EXT/'popup.js').read_text())
+            expect(popup.locator('#siteState')).to_contain_text('Site permission required')
             popup.fill('#pairCode','psv2:23456:'+'a'*64);popup.click('#pair')
             expect(popup.locator('#pairStatus')).to_contain_text('Paired until')
             assert popup.input_value('#pairCode')==''
