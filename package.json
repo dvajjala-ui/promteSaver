@@ -1,0 +1,49 @@
+{
+  "name": "promtesaver",
+  "version": "0.9.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.16.0 <25"
+  },
+  "scripts": {
+    "contracts:generate": "node scripts/generate-contracts.mjs",
+    "contracts:check": "node scripts/generate-contracts.mjs --check",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/*.test.ts tests/*.test.mjs",
+    "check": "npm run release:check && npm run contracts:check && npm run typecheck && npm run lint:browser && npm test",
+    "demo": "node apps/harness/replay.ts",
+    "demo:compat": "node --experimental-strip-types apps/harness/replay.ts",
+    "test:windows": "powershell.exe -NoProfile -ExecutionPolicy Bypass -STA -File scripts/windows-accessibility-proof.ps1",
+    "local": "node apps/local-web/server.ts",
+    "local:compat": "node --experimental-strip-types apps/local-web/server.ts",
+    "test:local": "node --test tests/local-web.test.ts tests/library.test.ts tests/security.test.ts",
+    "bench:local": "node scripts/bench-local.ts",
+    "lint:browser": "node --check apps/local-web/public/app.js && node --check apps/local-web/public/template-engine.js && node --check apps/local-web/public/assistant.js && node --check apps/browser-helper/popup.js && node --check apps/browser-helper/background.js && node --check apps/browser-helper/editor-core.js && node --check apps/browser-helper/recorder.js",
+    "bench:beta": "node scripts/bench-beta.ts 5000",
+    "doctor": "node scripts/doctor.mjs",
+    "test:compat": "node --experimental-strip-types --test tests/*.test.ts tests/*.test.mjs",
+    "bench:reliability": "node scripts/bench-reliability.ts 5000",
+    "desktop:plan": "node scripts/prepare-desktop.mjs --dry-run",
+    "desktop:prepare": "node scripts/prepare-desktop.mjs",
+    "test:desktop-service": "node --test tests/desktop-lifecycle.test.ts tests/desktop-packaging.test.mjs",
+    "recover:lease": "node scripts/recover-vault-lock.ts",
+    "test:browser:fixture": "python scripts/browser-smoke.py --mode fixture",
+    "test:browser:live": "python scripts/browser-smoke.py --mode live",
+    "profile:resources": "python scripts/profile-resources.py --records 300 --idle-seconds 4",
+    "profile:chromium": "python scripts/chromium-perf.py --items 2000 --low-memory",
+    "bench:writing": "node scripts/bench-writing.ts 40",
+    "release:check": "node scripts/release-check.mjs",
+    "desktop:verify": "node scripts/desktop-integrity.mjs",
+    "desktop:build": "node scripts/build-desktop.mjs",
+    "bench:responsiveness": "node scripts/bench-responsiveness.ts",
+    "test:core": "node --test tests/core-workflows.test.ts tests/extension-worker.test.mjs",
+    "test:browser:core": "python scripts/core-browser-tests.py",
+    "test:extension:worker": "python scripts/extension-worker-check.py"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "typescript": "7.0.2"
+  }
+}

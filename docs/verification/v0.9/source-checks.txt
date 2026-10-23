@@ -1,0 +1,16 @@
+
+> promtesaver@0.9.0 lint:browser
+> node --check apps/local-web/public/app.js && node --check apps/local-web/public/template-engine.js && node --check apps/local-web/public/assistant.js && node --check apps/browser-helper/popup.js && node --check apps/browser-helper/background.js && node --check apps/browser-helper/editor-core.js && node --check apps/browser-helper/recorder.js
+
+{
+  "version": "0.9.0",
+  "consistent": true,
+  "checked": [
+    "lockfile",
+    "lockfilePackage",
+    "tauri",
+    "cargo",
+    "server",
+    "extension"
+  ]
+}

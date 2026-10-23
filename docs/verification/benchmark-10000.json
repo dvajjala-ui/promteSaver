@@ -1,0 +1,44 @@
+{
+  "version": "0.3.0",
+  "records": 10000,
+  "node": "v22.16.0",
+  "platform": "linux",
+  "architecture": "x64",
+  "seedMs": 3873.75,
+  "distinctQueryCacheMiss": {
+    "samples": 10,
+    "p50Ms": 124.88,
+    "p95Ms": 148.69,
+    "maximumMs": 148.69
+  },
+  "identicalQueryCacheHit": {
+    "samples": 20,
+    "p50Ms": 0.61,
+    "p95Ms": 1.27,
+    "maximumMs": 1.87
+  },
+  "deepPageMs": 137.69,
+  "lowMemory": {
+    "coldMs": 121.29,
+    "warm": {
+      "samples": 20,
+      "p50Ms": 0.31,
+      "p95Ms": 0.42,
+      "maximumMs": 0.61
+    }
+  },
+  "facets": {
+    "coldMs": 104.27,
+    "warmMs": 0.09
+  },
+  "rssMiB": 114.88,
+  "heapUsedMiB": 36.67,
+  "dbAndWalMiB": 18.71,
+  "limitations": [
+    "Synthetic data and Linux compatibility runtime only",
+    "RSS is a point-in-time Node process measurement, not peak or whole-app memory",
+    "Browser and webview memory excluded",
+    "Cold full-text search still decrypts/scans O(n) rows",
+    "Warm results are keyed cache hits, not a general search-speed guarantee"
+  ]
+}

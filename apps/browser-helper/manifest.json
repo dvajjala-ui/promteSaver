@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "promteSaver - Browser Companion",
+  "version": "0.9.0",
+  "description": "Opt-in send-intent capture and local writing hints on approved AI sites. Manual preview elsewhere. No cloud typing uploads.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "clipboardWrite",
+    "storage"
+  ],
+  "action": {
+    "default_title": "Preview current prompt",
+    "default_popup": "popup.html"
+  },
+  "incognito": "not_allowed",
+  "minimum_chrome_version": "112",
+  "host_permissions": [
+    "http://127.0.0.1/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "optional_host_permissions": [
+    "https://chatgpt.com/*",
+    "https://claude.ai/*",
+    "https://gemini.google.com/*"
+  ]
+}

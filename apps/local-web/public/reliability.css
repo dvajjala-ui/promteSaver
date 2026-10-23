@@ -1,0 +1,19 @@
+/* v0.3: bounded views, accessible controls, and encrypted preferences. */
+.skip-link{position:fixed;left:16px;top:-80px;z-index:1000;padding:12px 20px;background:var(--mint);color:var(--bg);border-radius:8px}.skip-link:focus{top:16px}
+.selection-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;color:var(--muted);font-size:12px}.selection-row label{display:flex;align-items:center;gap:8px;cursor:pointer;margin:0}
+.selection-row input,.item-select,.check-option input{width:16px;height:16px;accent-color:var(--mint);flex:0 0 auto;margin:0}.item-select{margin-right:10px}
+.bulk-controls{display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px;border:1px solid var(--line);background:var(--surface2);border-radius:10px;margin:0 0 16px}.bulk-controls button{min-height:36px}
+.more-row{display:flex;justify-content:center;gap:14px;padding:22px 0}.editor-error{padding:0 25px;margin:0;max-width:100%;overflow-wrap:anywhere}
+.preferences-panel{border:1px solid var(--line);background:var(--surface);border-radius:16px;padding:26px;margin:24px 0}.preferences-panel h2{margin:6px 0 22px}.preferences-fields{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin:0 0 24px}.preferences-fields input[type=number]{max-width:180px;display:block;margin:8px 0}.preferences-fields small{color:var(--muted);font-size:12px;line-height:1.6;display:block}.check-option{display:flex;align-items:flex-start;gap:12px;margin:0;cursor:pointer}.check-option input{margin-top:4px}.check-option strong{display:block;font-size:14px;margin-bottom:5px}.password-actions{border-top:1px solid var(--line);margin-top:18px;padding-top:18px}.password-actions h3{margin:0}.password-actions p{max-width:720px;font-size:13px}.restore-review{margin:18px 0;padding:16px;border:1px solid var(--mintdark);border-radius:10px;line-height:1.7;background:var(--surface2);font-size:13px}
+.compact .hero{display:none}.compact .page-scroll{padding-top:22px}.compact .item-card{padding:16px}.compact .card-body{max-height:60px;line-clamp:2;-webkit-line-clamp:2}.compact .card-note{display:none}
+.low-memory .hero-art{display:none}.low-memory *{animation:none!important;transition:none!important}.item-card.selected{border-color:var(--mint)}
+@media(max-width:760px){.preferences-fields{grid-template-columns:1fr}.preferences-panel{padding:18px}.bulk-controls{gap:3px}.bulk-controls button{font-size:12px}.modal-footer{flex-wrap:wrap}.selection-row{align-items:flex-start}.item-select{min-width:18px;min-height:18px}}
+@media(forced-colors:active){.btn,.pill,.item-card,.bulk-controls,.restore-review{border:1px solid ButtonText}.nav-item.active{outline:2px solid Highlight}.status-dot{background:CanvasText}.type-tag{border:1px solid CanvasText}}
+
+#actionDialog {max-width:640px;width:calc(100% - 32px);padding:28px;}
+#actionMessage{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--muted);line-height:1.6;}
+#actionDialog textarea {width:100%;box-sizing:border-box;}
+.preferences-fields input[type=number],#actionInput{border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);padding:10px 12px}
+.dialog-actions{display:flex;justify-content:flex-end;gap:12px;margin-top:24px}
+@media(max-width:850px){.sidebar>.nav:not(#mainNav){display:flex;width:auto;margin-left:auto}.sidebar>.nav:not(#mainNav) .nav-item{width:auto}#mainNav{order:3}}
+@media(max-width:640px){.compact .stats{display:none}.compact .section-top{margin-top:14px}.compact .section-actions{margin-top:4px}}

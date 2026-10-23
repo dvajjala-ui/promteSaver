@@ -1,0 +1,52 @@
+TAP version 13
+# Subtest: MV3 worker starts unpaired, storage is trusted-context only, and content scripts get no bearer secrets
+ok 1 - MV3 worker starts unpaired, storage is trusted-context only, and content scripts get no bearer secrets
+  ---
+  duration_ms: 3.387971
+  type: 'test'
+  ...
+# Subtest: MV3 source validation rejects wrong origin, subframes, incognito and page attempts to enable access
+ok 2 - MV3 source validation rejects wrong origin, subframes, incognito and page attempts to enable access
+  ---
+  duration_ms: 1.127084
+  type: 'test'
+  ...
+# Subtest: MV3 site registration scoped to optional host, top frame and static content files
+ok 3 - MV3 site registration scoped to optional host, top frame and static content files
+  ---
+  duration_ms: 0.987884
+  type: 'test'
+  ...
+# Subtest: MV3 forwards only allowed host-derived payload to loopback; no prompts persist in extension storage
+ok 4 - MV3 forwards only allowed host-derived payload to loopback; no prompts persist in extension storage
+  ---
+  duration_ms: 18.647089
+  type: 'test'
+  ...
+# Subtest: MV3 locking failures clear session permission; unreachable service does not queue or retry text
+ok 5 - MV3 locking failures clear session permission; unreachable service does not queue or retry text
+  ---
+  duration_ms: 22.842192
+  type: 'test'
+  ...
+# Subtest: MV3 does not send expired, unapproved-site, unpaired or oversized captures
+ok 6 - MV3 does not send expired, unapproved-site, unpaired or oversized captures
+  ---
+  duration_ms: 1.053002
+  type: 'test'
+  ...
+# Subtest: MV3 bridge limits response bytes and bounds parallel in-flight captures without queuing
+ok 7 - MV3 bridge limits response bytes and bounds parallel in-flight captures without queuing
+  ---
+  duration_ms: 5.260535
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 102.032349

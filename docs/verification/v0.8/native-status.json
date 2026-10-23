@@ -1,0 +1,8 @@
+{
+  "compiled": false,
+  "installerProduced": false,
+  "rustToolchainAvailable": false,
+  "preflightExit": 1,
+  "reason": "Native packaging refuses Node 22.16 compatibility runtime; requires Node 24.16+ within 24.x",
+  "ciWorkflowExecuted": false
+}

@@ -1,0 +1,4 @@
+
+> promtesaver@0.3.0 lint:browser
+> node --check apps/local-web/public/app.js && node --check apps/local-web/public/template-engine.js && node --check apps/browser-helper/popup.js
+

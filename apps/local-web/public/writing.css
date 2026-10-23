@@ -1,0 +1,58 @@
+/* Writing Studio: native layout, no framework, tracker, remote font, or animation dependency. */
+.writing-studio{max-width:1220px;color:#e8f5ef}
+.writing-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:22px}
+.writing-heading h1{font-size:clamp(27px,3vw,39px);letter-spacing:-.045em;line-height:1.15;margin:6px 0 9px}
+.writing-heading p{max-width:720px;font-size:13px;line-height:1.7;color:#9badab;margin:0}
+.writing-privacy{border:1px solid #456556;border-radius:30px;font-weight:750;font-size:10px;letter-spacing:.07em;padding:10px 12px;color:#a4ebc2;white-space:nowrap}
+.writing-overview{padding:16px 20px;background:linear-gradient(112deg,#19322d,#17232a);border:1px solid #35554a;border-radius:12px;display:flex;align-items:center;gap:14px;margin-bottom:20px}
+.writing-overview strong{color:#b5f0c8;white-space:nowrap}.writing-overview span{flex:1;color:#a5b9b6;font-size:12px;line-height:1.5}
+.writing-layout{display:grid;grid-template-columns:minmax(205px,260px) minmax(0,1fr);align-items:start;gap:18px}
+.writing-list-card,.writing-panel{background:#141e25;border:1px solid #304047;border-radius:14px;box-shadow:0 8px 25px #070c0f25}
+.writing-list-card{padding:19px;position:sticky;top:18px;min-width:0}
+.writing-list-card h2{font-size:15px;margin:0 0 7px}.writing-list-card h2 span{font-size:12px;color:#98b4a8;margin-left:4px}
+.writing-list-card>p{font-size:11px;color:#8b9e9f;line-height:1.6;margin:0 0 18px}
+.writing-profiles{display:flex;flex-direction:column;gap:8px}
+.writing-profile{display:block;width:100%;text-align:left;padding:12px;border-radius:10px;border:1px solid #304047;background:#101920;color:#dcebe9;cursor:pointer}
+.writing-profile strong{display:block;font-size:12px;overflow-wrap:anywhere}
+.writing-profile small{display:block;color:#8aa6a5;margin-top:6px;font-size:10px;line-height:1.4}
+.writing-profile:hover,.writing-profile:focus-visible{border-color:#8bbba3;outline:none}
+.writing-profile.active{background:#203c32;border-color:#7fcba5}
+.writing-content{display:flex;flex-direction:column;gap:17px;min-width:0}
+.writing-panel{padding:23px;min-width:0}
+.writing-panel-head{display:flex;gap:13px;align-items:flex-start;margin-bottom:22px}
+.writing-step{border-radius:10px;padding:10px;background:#203d34;color:#b8f7cf;font-size:13px;font-weight:800}
+.writing-panel h2{font-size:20px;letter-spacing:-.02em;margin:0 0 6px}
+.writing-panel-head p{color:#91a8a7;font-size:11px;line-height:1.6;margin:0}
+.writing-panel label:not(.writing-consent){display:block;font-size:11px;color:#c9e2d6;font-weight:700;margin:14px 0 7px}
+.writing-panel label small{font-weight:400;color:#89a39d}
+.writing-panel input:not([type=checkbox]),.writing-panel textarea{width:100%;font:inherit;color:#e7f3ec;background:#0d161c;border:1px solid #3c4d52;border-radius:9px;padding:12px;line-height:1.55;outline:none;min-width:0}
+.writing-panel textarea{resize:vertical;min-height:96px;font-size:12px}
+.writing-panel input:not([type=checkbox]):focus,.writing-panel textarea:focus{border-color:#a9e8c4;box-shadow:0 0 0 3px #a8e8c411}
+.writing-help{font-size:11px;line-height:1.6;color:#93aba6}
+.writing-two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.writing-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:14px 0}
+.writing-danger{color:#ffb3a9!important}
+.writing-status{font-size:11px;min-height:17px;color:#c5d6d3;line-height:1.65;margin:14px 0 0}
+.writing-status.error{color:#ffb3a9}
+.writing-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:13px 0 5px}
+.writing-metric{background:#0f1d20;border:1px solid #344946;border-radius:8px;padding:10px}
+.writing-metric strong{display:block;color:#c4f6d1;font-size:18px}.writing-metric small{font-size:10px;color:#9cb0ac}
+.writing-consent{display:flex;gap:10px;align-items:flex-start;margin:13px 0;color:#d0e5df;font-size:12px;line-height:1.5;cursor:pointer}
+.writing-consent input{accent-color:#abdfbd;width:17px;height:17px;margin-top:2px;flex-shrink:0}
+.writing-consent small{display:block;font-size:10px;margin-top:4px;color:#8da7a3}
+#styleInstructions{min-height:200px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11px}
+.writing-export{background:#152820;border-color:#365c4b}
+@media(max-width:1000px){.writing-layout{grid-template-columns:210px minmax(0,1fr)}.writing-panel{padding:17px}}
+@media(max-width:760px){.writing-layout{grid-template-columns:1fr}.writing-list-card{position:static}.writing-profiles{flex-direction:row;overflow-x:auto}.writing-profile{min-width:180px}.writing-heading{display:block}.writing-privacy{display:inline-block;margin-top:11px}.writing-overview{flex-wrap:wrap}}
+@media(max-width:540px){.writing-two,.writing-metrics{grid-template-columns:1fr}.writing-panel{padding:16px}.writing-overview button{width:100%}}
+
+.writing-sample-review{border:1px solid #30483c;background:#0e1b19;border-radius:9px;padding:10px 12px;margin:12px 0;font-size:11px;color:#afc5bf}
+.writing-sample-review summary{cursor:pointer;color:#c5e9d4;font-weight:700}
+.writing-sample-review p{border-top:1px solid #355047;margin:12px 0 0;padding:12px 0 0;color:#c3d9cf;white-space:pre-wrap;overflow-wrap:anywhere;max-height:160px;overflow:auto}
+
+.writing-issues{display:flex;flex-direction:column;gap:10px;margin:10px 0}
+.writing-issue{padding:13px;border-radius:9px;border:1px solid #30454a;background:#101b22;display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.writing-issue p{font-size:11px;line-height:1.5;margin:0 0 4px;color:#cfe3df;overflow-wrap:anywhere}
+.writing-issue small{font-size:10px;color:#91a8a8;overflow-wrap:anywhere}
+.writing-issue .btn{flex-shrink:0}
+@media(max-width:540px){.writing-issue{flex-direction:column}}

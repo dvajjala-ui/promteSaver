@@ -1,0 +1,32 @@
+name: Manual cross-platform resource profile (synthetic only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  profile:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.16.0'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install optional profiling dependency
+        run: python -m pip install psutil==7.0.0
+      - name: Profile temporary synthetic vault (never real user data)
+        run: python scripts/profile-resources.py --records 1000 --idle-seconds 10 --output profile.json
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resource-profile-${{ matrix.os }}
+          path: profile.json
+          if-no-files-found: warn
+          retention-days: 7

@@ -1,0 +1,20 @@
+{
+  "application": "promteSaver reliability beta 0.3",
+  "nodeVersion": "v22.16.0",
+  "recommendedNode": "24.16.x",
+  "nodeTargetMet": false,
+  "os": "linux",
+  "architecture": "x64",
+  "kernelRelease": "6.18.55",
+  "totalMemoryMiB": 5948,
+  "freeMemoryMiB": 4675,
+  "requiredFilesPresent": true,
+  "nodeRuntimeRequired": true,
+  "nativeRecorderIncluded": false,
+  "desktopInstallerIncluded": false,
+  "desktopHostSourceIncluded": true,
+  "desktopHostCompiledInThisRelease": false,
+  "keyEnvelopeFormat": 2,
+  "browserHelperManualOnly": true,
+  "note": "Diagnostic reports environment and repository files only; it does not inspect your prompts or use the network."
+}

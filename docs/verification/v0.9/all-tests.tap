@@ -1,0 +1,936 @@
+TAP version 13
+# (node:6207) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:6207) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: archive survives restart and preserves original text plus pending operations
+ok 1 - archive survives restart and preserves original text plus pending operations
+  ---
+  duration_ms: 59.212332
+  type: 'test'
+  ...
+# Subtest: wrong key and malformed key fail without accepting new records
+ok 2 - wrong key and malformed key fail without accepting new records
+  ---
+  duration_ms: 16.974644
+  type: 'test'
+  ...
+# Subtest: plaintext SQLite is not silently adopted as an encrypted archive
+ok 3 - plaintext SQLite is not silently adopted as an encrypted archive
+  ---
+  duration_ms: 3.022112
+  type: 'test'
+  ...
+# Subtest: database and active WAL contain no source-body or source-metadata canaries
+ok 4 - database and active WAL contain no source-body or source-metadata canaries
+  ---
+  duration_ms: 21.684196
+  type: 'test'
+  ...
+# Subtest: replayed puts are idempotent but conflicting immutable source IDs fail
+ok 5 - replayed puts are idempotent but conflicting immutable source IDs fail
+  ---
+  duration_ms: 12.685172
+  type: 'test'
+  ...
+# Subtest: record and outbox commit atomically when queue insertion fails
+ok 6 - record and outbox commit atomically when queue insertion fails
+  ---
+  duration_ms: 13.514195
+  type: 'test'
+  ...
+# Subtest: only explicitly acknowledged operations leave the offline queue
+ok 7 - only explicitly acknowledged operations leave the offline queue
+  ---
+  duration_ms: 11.991853
+  type: 'test'
+  ...
+# Subtest: delete removes queued content and tombstone prevents stale resurrection after restart
+ok 8 - delete removes queued content and tombstone prevents stale resurrection after restart
+  ---
+  duration_ms: 14.046022
+  type: 'test'
+  ...
+# Subtest: authenticated encryption rejects payload tampering and swapping record identities
+ok 9 - authenticated encryption rejects payload tampering and swapping record identities
+  ---
+  duration_ms: 16.803388
+  type: 'test'
+  ...
+# Subtest: excluded observations never reach durable records or queue, even with draft retention enabled
+ok 10 - excluded observations never reach durable records or queue, even with draft retention enabled
+  ---
+  duration_ms: 11.588988
+  type: 'test'
+  ...
+# Subtest: storage applies defense-in-depth redaction and rejects use after close
+ok 11 - storage applies defense-in-depth redaction and rejects use after close
+  ---
+  duration_ms: 10.930111
+  type: 'test'
+  ...
+# (node:6208) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:6208) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: work lane rejects simultaneous work, keeps cancellation bounded, and becomes reusable
+ok 12 - work lane rejects simultaneous work, keeps cancellation bounded, and becomes reusable
+  ---
+  duration_ms: 1.998296
+  type: 'test'
+  ...
+# Subtest: async wrappers are byte-format compatible with synchronous v2 encryption
+ok 13 - async wrappers are byte-format compatible with synchronous v2 encryption
+  ---
+  duration_ms: 1431.916654
+  type: 'test'
+  ...
+# Subtest: async derivation yields to the event loop instead of blocking timers
+ok 14 - async derivation yields to the event loop instead of blocking timers
+  ---
+  duration_ms: 317.889313
+  type: 'test'
+  ...
+# Subtest: locking a pending setup cancels it before writing a database or key file
+ok 15 - locking a pending setup cancels it before writing a database or key file
+  ---
+  duration_ms: 571.374435
+  type: 'test'
+  ...
+# Subtest: async setup rejects simultaneous sync/async setup and preserves metadata after write failure
+ok 16 - async setup rejects simultaneous sync/async setup and preserves metadata after write failure
+  ---
+  duration_ms: 508.45476
+  type: 'test'
+  ...
+# Subtest: lock wins over pending unlock; wrong password and retry still work
+ok 17 - lock wins over pending unlock; wrong password and retry still work
+  ---
+  duration_ms: 1146.434112
+  type: 'test'
+  ...
+# Subtest: lock and AbortSignal cannot commit a pending passphrase replacement
+ok 18 - lock and AbortSignal cannot commit a pending passphrase replacement
+  ---
+  duration_ms: 2060.866957
+  type: 'test'
+  ...
+# Subtest: async legacy migration authenticates before replacing metadata, preserving records
+ok 19 - async legacy migration authenticates before replacing metadata, preserving records
+  ---
+  duration_ms: 805.905212
+  type: 'test'
+  ...
+# Subtest: async backup is interoperable, rejects tampering, and never gathers data after cancellation
+ok 20 - async backup is interoperable, rejects tampering, and never gathers data after cancellation
+  ---
+  duration_ms: 321.011185
+  type: 'test'
+  ...
+# Subtest: real HTTP remains responsive during KDF, rejects overlapping jobs, and lock cancels setup
+ok 21 - real HTTP remains responsive during KDF, rejects overlapping jobs, and lock cancels setup
+  ---
+  duration_ms: 518.675563
+  type: 'test'
+  ...
+# Subtest: slow HTTP writes cannot cross a lock/unlock boundary and modify the new session
+ok 22 - slow HTTP writes cannot cross a lock/unlock boundary and modify the new session
+  ---
+  duration_ms: 607.254945
+  type: 'test'
+  ...
+# Subtest: closing during setup waits for derivation disposal and never creates or unlocks a vault
+ok 23 - closing during setup waits for derivation disposal and never creates or unlocks a vault
+  ---
+  duration_ms: 3267.243111
+  type: 'test'
+  ...
+# Subtest: async passphrase write failure preserves the old wrapper and keeps a usable vault
+ok 24 - async passphrase write failure preserves the old wrapper and keeps a usable vault
+  ---
+  duration_ms: 1008.846495
+  type: 'test'
+  ...
+# Subtest: failed async legacy metadata upgrade leaves the original key file and no open archive
+ok 25 - failed async legacy metadata upgrade leaves the original key file and no open archive
+  ---
+  duration_ms: 602.545532
+  type: 'test'
+  ...
+# Subtest: locking a real HTTP backup import cancels it without adding data after re-unlock
+ok 26 - locking a real HTTP backup import cancels it without adding data after re-unlock
+  ---
+  duration_ms: 560.008254
+  type: 'test'
+  ...
+# (node:6209) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:6209) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: v0.1 library migration: legacy table without deleted_at opens without destroying items
+ok 27 - v0.1 library migration: legacy table without deleted_at opens without destroying items
+  ---
+  duration_ms: 42.89909
+  type: 'test'
+  ...
+# Subtest: library: project facets, AND search, relevance, usage sorting, paging, trash and restore
+ok 28 - library: project facets, AND search, relevance, usage sorting, paging, trash and restore
+  ---
+  duration_ms: 49.748181
+  type: 'test'
+  ...
+# Subtest: encrypted portable backup round-trips full history, encrypted text and captured records
+ok 29 - encrypted portable backup round-trips full history, encrypted text and captured records
+  ---
+  duration_ms: 201.794011
+  type: 'test'
+  ...
+# Subtest: local API: facets/search/paging/trash/use/duplicate, backup export-import and authorization
+ok 30 - local API: facets/search/paging/trash/use/duplicate, backup export-import and authorization
+  ---
+  duration_ms: 632.369914
+  type: 'test'
+  ...
+# (node:6240) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:6240) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: write-only browser helper: explicit pairing, one-use code, exclusions, revoke, lock and origin checks
+ok 31 - write-only browser helper: explicit pairing, one-use code, exclusions, revoke, lock and origin checks
+  ---
+  duration_ms: 760.662069
+  type: 'test'
+  ...
+# (node:6251) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: disabled/paused states prevent capture and explicit exclusions override an allowed app
+ok 32 - disabled/paused states prevent capture and explicit exclusions override an allowed app
+  ---
+  duration_ms: 1.013988
+  type: 'test'
+  ...
+# Subtest: protected, private, unknown and non-prompt surfaces never reach the sink
+ok 33 - protected, private, unknown and non-prompt surfaces never reach the sink
+  ---
+  duration_ms: 2.060589
+  type: 'test'
+  ...
+# Subtest: schemas reject unknown properties, invalid times and malformed snapshots without reflecting data
+ok 34 - schemas reject unknown properties, invalid times and malformed snapshots without reflecting data
+  ---
+  duration_ms: 0.951625
+  type: 'test'
+  ...
+# Subtest: latest complete snapshot reconciles edits and paste; Enter in text does not submit
+ok 35 - latest complete snapshot reconciles edits and paste; Enter in text does not submit
+  ---
+  duration_ms: 1.548188
+  type: 'test'
+  ...
+# Subtest: snapshot replacement handles undo, selected replacement, emoji and mixed language without guessing keys
+ok 36 - snapshot replacement handles undo, selected replacement, emoji and mixed language without guessing keys
+  ---
+  duration_ms: 0.751759
+  type: 'test'
+  ...
+# Subtest: focus switch cannot submit the previous editor text
+ok 37 - focus switch cannot submit the previous editor text
+  ---
+  duration_ms: 0.352458
+  type: 'test'
+  ...
+# Subtest: permission/pause changes and observation gaps clear in-memory drafts
+ok 38 - permission/pause changes and observation gaps clear in-memory drafts
+  ---
+  duration_ms: 1.281243
+  type: 'test'
+  ...
+# Subtest: partial snapshots remain partial even after a confirmed submission
+ok 39 - partial snapshots remain partial even after a confirmed submission
+  ---
+  duration_ms: 0.281194
+  type: 'test'
+  ...
+# Subtest: a hook can carry a complete submitted prompt with source provenance
+ok 40 - a hook can carry a complete submitted prompt with source provenance
+  ---
+  duration_ms: 0.547948
+  type: 'test'
+  ...
+# Subtest: duplicate sequence and cross-device input do not produce extra records
+ok 41 - duplicate sequence and cross-device input do not produce extra records
+  ---
+  duration_ms: 0.624159
+  type: 'test'
+  ...
+# Subtest: draft retention is opt-in and keeps its quality distinct from submission
+ok 42 - draft retention is opt-in and keeps its quality distinct from submission
+  ---
+  duration_ms: 0.706789
+  type: 'test'
+  ...
+# Subtest: redaction runs before sink access and covers metadata as well as body
+ok 43 - redaction runs before sink access and covers metadata as well as body
+  ---
+  duration_ms: 0.310763
+  type: 'test'
+  ...
+# Subtest: redaction recognizes private keys, API tokens, bearer tokens and credential URLs
+ok 44 - redaction recognizes private keys, API tokens, bearer tokens and credential URLs
+  ---
+  duration_ms: 0.106301
+  type: 'test'
+  ...
+# Subtest: an incomplete private-key block is redacted before a draft can be retained
+ok 45 - an incomplete private-key block is redacted before a draft can be retained
+  ---
+  duration_ms: 0.267936
+  type: 'test'
+  ...
+# Subtest: a failed sink write can retry the same observation without losing a submission
+ok 46 - a failed sink write can retry the same observation without losing a submission
+  ---
+  duration_ms: 0.362902
+  type: 'test'
+  ...
+# (node:6262) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:6262) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: Groq key syntax and raw token redaction; no arbitrary provider endpoint
+ok 47 - Groq key syntax and raw token redaction; no arbitrary provider endpoint
+  ---
+  duration_ms: 14.53536
+  type: 'test'
+  ...
+# Subtest: AI settings encrypted at rest, absent from public APIs/backups and unavailable when locked
+ok 48 - AI settings encrypted at rest, absent from public APIs/backups and unavailable when locked
+  ---
+  duration_ms: 695.10739
+  type: 'test'
+  ...
+# Subtest: Groq requires per-request consent; preview is local; real HTTP route builds bounded redacted provider request
+ok 49 - Groq requires per-request consent; preview is local; real HTTP route builds bounded redacted provider request
+  ---
+  duration_ms: 346.892111
+  type: 'test'
+  ...
+# Subtest: AI style use sends preferences and numeric tendencies, never stored sample excerpts
+ok 50 - AI style use sends preferences and numeric tendencies, never stored sample excerpts
+  ---
+  duration_ms: 340.304222
+  type: 'test'
+  ...
+# Subtest: AI busy requests rejected; lock aborts in-flight request and old result cannot reach new session
+ok 51 - AI busy requests rejected; lock aborts in-flight request and old result cannot reach new session
+  ---
+  duration_ms: 620.136089
+  type: 'test'
+  ...
+# Subtest: provider errors, redirects, non-JSON and oversized responses are safe and not retried
+ok 52 - provider errors, redirects, non-JSON and oversized responses are safe and not retried
+  ---
+  duration_ms: 6.23027
+  type: 'test'
+  ...
+# Subtest: provider deadline aborts transport; no automatic retry or retained output
+ok 53 - provider deadline aborts transport; no automatic retry or retained output
+  ---
+  duration_ms: 28.123694
+  type: 'test'
+  ...
+# Subtest: AI per-minute budget bounds provider usage
+ok 54 - AI per-minute budget bounds provider usage
+  ---
+  duration_ms: 1.447674
+  type: 'test'
+  ...
+# Subtest: capture adapter validates site consent, size, stale timestamps and marks observations as draft snapshots
+ok 55 - capture adapter validates site consent, size, stale timestamps and marks observations as draft snapshots
+  ---
+  duration_ms: 0.575504
+  type: 'test'
+  ...
+# Subtest: automatic capture requires independent pairing consent, is idempotent, redacts keys and never calls AI
+ok 56 - automatic capture requires independent pairing consent, is idempotent, redacts keys and never calls AI
+  ---
+  duration_ms: 376.044928
+  type: 'test'
+  ...
+# Subtest: immutable capture stays unchanged by editing its library copy; permanent deletion preserves tombstone on restore
+ok 57 - immutable capture stays unchanged by editing its library copy; permanent deletion preserves tombstone on restore
+  ---
+  duration_ms: 18.257093
+  type: 'test'
+  ...
+# Subtest: capture backups preserve links; deleting a capture removes linked copy and history
+ok 58 - capture backups preserve links; deleting a capture removes linked copy and history
+  ---
+  duration_ms: 17.878856
+  type: 'test'
+  ...
+# Subtest: restored deletion evidence removes an existing linked library copy and history
+ok 59 - restored deletion evidence removes an existing linked library copy and history
+  ---
+  duration_ms: 20.168549
+  type: 'test'
+  ...
+# Subtest: diagnostics reflect opt-in capabilities without exposing credentials or approved host names
+ok 60 - diagnostics reflect opt-in capabilities without exposing credentials or approved host names
+  ---
+  duration_ms: 337.633367
+  type: 'test'
+  ...
+# Subtest: outbound approval is invalidated by changed text, model, settings or locked session
+ok 61 - outbound approval is invalidated by changed text, model, settings or locked session
+  ---
+  duration_ms: 572.979236
+  type: 'test'
+  ...
+# Subtest: runtime verifier checks all bytes, version and target without executing staged artifacts
+ok 62 - runtime verifier checks all bytes, version and target without executing staged artifacts
+  ---
+  duration_ms: 10.740987
+  type: 'test'
+  ...
+# Subtest: runtime verifier rejects duplicate, traversing and untracked runtime files
+ok 63 - runtime verifier rejects duplicate, traversing and untracked runtime files
+  ---
+  duration_ms: 10.783954
+  type: 'test'
+  ...
+# Subtest: runtime verifier rejects missing, oversized and invalid manifests
+ok 64 - runtime verifier rejects missing, oversized and invalid manifests
+  ---
+  duration_ms: 5.614183
+  type: 'test'
+  ...
+# Subtest: staging rejects a symlinked source root and verification rejects symlink ancestors
+ok 65 - staging rejects a symlinked source root and verification rejects symlink ancestors
+  ---
+  duration_ms: 1.9791
+  type: 'test'
+  ...
+# (node:6284) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:6284) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: desktop child handshake is private, restricted IPC locks, shutdown releases the vault
+ok 66 - desktop child handshake is private, restricted IPC locks, shutdown releases the vault
+  ---
+  duration_ms: 519.720552
+  type: 'test'
+  ...
+# Subtest: parent pipe EOF terminates service; vault can reopen and preserve data
+ok 67 - parent pipe EOF terminates service; vault can reopen and preserve data
+  ---
+  duration_ms: 898.706532
+  type: 'test'
+  ...
+# Subtest: oversized parent protocol fails closed and releases the lease
+ok 68 - oversized parent protocol fails closed and releases the lease
+  ---
+  duration_ms: 316.365808
+  type: 'test'
+  ...
+# Subtest: exclusive service lease rejects a second instance and explicit recovery refuses live owners
+ok 69 - exclusive service lease rejects a second instance and explicit recovery refuses live owners
+  ---
+  duration_ms: 4.528149
+  type: 'test'
+  ...
+# Subtest: lease release is idempotent and does not remove a replaced ownership record
+ok 70 - lease release is idempotent and does not remove a replaced ownership record
+  ---
+  duration_ms: 1.368866
+  type: 'test'
+  ...
+# Subtest: failed port binding releases the attempted directory lease
+ok 71 - failed port binding releases the attempted directory lease
+  ---
+  duration_ms: 2.783239
+  type: 'test'
+  ...
+# Subtest: explicit stale-lease recovery succeeds only after the recorded child has exited
+ok 72 - explicit stale-lease recovery succeeds only after the recorded child has exited
+  ---
+  duration_ms: 36.698874
+  type: 'test'
+  ...
+# Subtest: desktop staging includes only the runtime sources and no user vault, secrets, fixtures or tests
+ok 73 - desktop staging includes only the runtime sources and no user vault, secrets, fixtures or tests
+  ---
+  duration_ms: 5.429112
+  type: 'test'
+  ...
+# Subtest: native targets are explicit and cross-target runtime staging is rejected
+ok 74 - native targets are explicit and cross-target runtime staging is rejected
+  ---
+  duration_ms: 0.494652
+  type: 'test'
+  ...
+# Subtest: staging rejects accidental vault metadata rather than copying it as JSON
+ok 75 - staging rejects accidental vault metadata rather than copying it as JSON
+  ---
+  duration_ms: 2.158892
+  type: 'test'
+  ...
+# (node:6346) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:6346) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: runtime compatibility rejects other major versions and prereleases
+ok 76 - runtime compatibility rejects other major versions and prereleases
+  ---
+  duration_ms: 0.773552
+  type: 'test'
+  ...
+# Subtest: diagnostics inspect file sizes, not file contents; support data is strictly allowlisted
+ok 77 - diagnostics inspect file sizes, not file contents; support data is strictly allowlisted
+  ---
+  duration_ms: 2.145121
+  type: 'test'
+  ...
+# Subtest: real HTTP diagnostics require unlocked authentication and do not renew the idle deadline
+ok 78 - real HTTP diagnostics require unlocked authentication and do not renew the idle deadline
+  ---
+  duration_ms: 349.811478
+  type: 'test'
+  ...
+# (node:6357) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:6357) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: drafts are encrypted, bounded, isolated from library/history/portable export, and recover after restart
+ok 79 - drafts are encrypted, bounded, isolated from library/history/portable export, and recover after restart
+  ---
+  duration_ms: 19.498828
+  type: 'test'
+  ...
+# Subtest: draft limit, invalid identifiers/oversized data, and tamper detection are enforced
+ok 80 - draft limit, invalid identifiers/oversized data, and tamper detection are enforced
+  ---
+  duration_ms: 38.096113
+  type: 'test'
+  ...
+# Subtest: unlocked HTTP draft API requires bearer token, rejects invalid data and preserves drafts through locking
+ok 81 - unlocked HTTP draft API requires bearer token, rejects invalid data and preserves drafts through locking
+  ---
+  duration_ms: 698.205112
+  type: 'test'
+  ...
+# Subtest: MV3 worker starts unpaired, storage is trusted-context only, and content scripts get no bearer secrets
+ok 82 - MV3 worker starts unpaired, storage is trusted-context only, and content scripts get no bearer secrets
+  ---
+  duration_ms: 4.459556
+  type: 'test'
+  ...
+# Subtest: MV3 source validation rejects wrong origin, subframes, incognito and page attempts to enable access
+ok 83 - MV3 source validation rejects wrong origin, subframes, incognito and page attempts to enable access
+  ---
+  duration_ms: 1.373071
+  type: 'test'
+  ...
+# Subtest: MV3 site registration scoped to optional host, top frame and static content files
+ok 84 - MV3 site registration scoped to optional host, top frame and static content files
+  ---
+  duration_ms: 1.217999
+  type: 'test'
+  ...
+# Subtest: MV3 forwards only allowed host-derived payload to loopback; no prompts persist in extension storage
+ok 85 - MV3 forwards only allowed host-derived payload to loopback; no prompts persist in extension storage
+  ---
+  duration_ms: 20.78549
+  type: 'test'
+  ...
+# Subtest: MV3 locking failures clear session permission; unreachable service does not queue or retry text
+ok 86 - MV3 locking failures clear session permission; unreachable service does not queue or retry text
+  ---
+  duration_ms: 22.976845
+  type: 'test'
+  ...
+# Subtest: MV3 does not send expired, unapproved-site, unpaired or oversized captures
+ok 87 - MV3 does not send expired, unapproved-site, unpaired or oversized captures
+  ---
+  duration_ms: 1.683759
+  type: 'test'
+  ...
+# Subtest: MV3 bridge limits response bytes and bounds parallel in-flight captures without queuing
+ok 88 - MV3 bridge limits response bytes and bounds parallel in-flight captures without queuing
+  ---
+  duration_ms: 5.152076
+  type: 'test'
+  ...
+# (node:6379) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:6379) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: local library CRUD, search, tags, pinning, templates, lock/reopen and captures coexist
+ok 89 - local library CRUD, search, tags, pinning, templates, lock/reopen and captures coexist
+  ---
+  duration_ms: 22.037921
+  type: 'test'
+  ...
+# Subtest: revision history is encrypted, can restore an earlier version, and is removed on delete
+ok 90 - revision history is encrypted, can restore an earlier version, and is removed on delete
+  ---
+  duration_ms: 14.908856
+  type: 'test'
+  ...
+# Subtest: library encrypts sensitive fields; plaintext canaries absent in SQLite/WAL
+ok 91 - library encrypts sensitive fields; plaintext canaries absent in SQLite/WAL
+  ---
+  duration_ms: 16.330751
+  type: 'test'
+  ...
+# Subtest: library redacts credential patterns and rejects malformed input and encryption tampering
+ok 92 - library redacts credential patterns and rejects malformed input and encryption tampering
+  ---
+  duration_ms: 22.951112
+  type: 'test'
+  ...
+# (node:6390) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:6390) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: local web: session token, host/origin checks, passphrase lock, CRUD and offline assets
+ok 93 - local web: session token, host/origin checks, passphrase lock, CRUD and offline assets
+  ---
+  duration_ms: 938.977349
+  type: 'test'
+  ...
+# (node:6401) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:6401) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: preview API bounds long bodies and metadata; full fetch and ETag preserve edits
+ok 94 - preview API bounds long bodies and metadata; full fetch and ETag preserve edits
+  ---
+  duration_ms: 343.097968
+  type: 'test'
+  ...
+# (node:6412) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: offline writing check recognizes explicitly selected spacing and duplicate-word candidates
+ok 95 - offline writing check recognizes explicitly selected spacing and duplicate-word candidates
+  ---
+  duration_ms: 2.247996
+  type: 'test'
+  ...
+# Subtest: writing issue positions preserve unicode UTF-16 offsets
+ok 96 - writing issue positions preserve unicode UTF-16 offsets
+  ---
+  duration_ms: 0.85854
+  type: 'test'
+  ...
+# Subtest: empty input is fine, non-string and over-limit input fail safely
+ok 97 - empty input is fine, non-string and over-limit input fail safely
+  ---
+  duration_ms: 0.929576
+  type: 'test'
+  ...
+# Subtest: trailing whitespace and readability warnings never apply automatic corrections
+ok 98 - trailing whitespace and readability warnings never apply automatic corrections
+  ---
+  duration_ms: 0.350407
+  type: 'test'
+  ...
+# Subtest: writing checker bounds issue counts and keeps deterministic ordering
+ok 99 - writing checker bounds issue counts and keeps deterministic ordering
+  ---
+  duration_ms: 0.865239
+  type: 'test'
+  ...
+# Subtest: release metadata is aligned and stale native versions fail before packaging
+ok 100 - release metadata is aligned and stale native versions fail before packaging
+  ---
+  duration_ms: 5.579968
+  type: 'test'
+  ...
+# (node:6434) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:6434) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: ETag detects edits and pinning but does not conflict on a copy/use event
+ok 101 - ETag detects edits and pinning but does not conflict on a copy/use event
+  ---
+  duration_ms: 15.912173
+  type: 'test'
+  ...
+# Subtest: batch operations are conditional, bounded and atomic; stale member changes none
+ok 102 - batch operations are conditional, bounded and atomic; stale member changes none
+  ---
+  duration_ms: 22.239103
+  type: 'test'
+  ...
+# Subtest: batch SQL failure rolls back earlier members, including version history
+ok 103 - batch SQL failure rolls back earlier members, including version history
+  ---
+  duration_ms: 11.90774
+  type: 'test'
+  ...
+# Subtest: bounded search cache invalidates on writes, reuse, trash and external DB commits
+ok 104 - bounded search cache invalidates on writes, reuse, trash and external DB commits
+  ---
+  duration_ms: 16.415929
+  type: 'test'
+  ...
+# Subtest: encrypted preferences persist and reject unbounded idle/unknown values
+ok 105 - encrypted preferences persist and reject unbounded idle/unknown values
+  ---
+  duration_ms: 10.627177
+  type: 'test'
+  ...
+# Subtest: v3 backups preserve tombstones and do not resurrect captures from an older backup
+ok 106 - v3 backups preserve tombstones and do not resurrect captures from an older backup
+  ---
+  duration_ms: 24.66091
+  type: 'test'
+  ...
+# Subtest: backup preview reports collisions without mutating the archive; legacy v1 still imports
+ok 107 - backup preview reports collisions without mutating the archive; legacy v1 still imports
+  ---
+  duration_ms: 19.21374
+  type: 'test'
+  ...
+# Subtest: malformed history groups, future revisions and duplicate captures reject before any import
+ok 108 - malformed history groups, future revisions and duplicate captures reject before any import
+  ---
+  duration_ms: 18.331195
+  type: 'test'
+  ...
+# (node:6445) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: private-key variants and multiword secrets are not retained even with whitespace
+ok 109 - private-key variants and multiword secrets are not retained even with whitespace
+  ---
+  duration_ms: 1.366211
+  type: 'test'
+  ...
+# Subtest: submission quality remains conservative when only a snapshot and submit signal exist
+ok 110 - submission quality remains conservative when only a snapshot and submit signal exist
+  ---
+  duration_ms: 1.879322
+  type: 'test'
+  ...
+# Subtest: schema-subset validation checks conditions, additional properties, types and dates
+ok 111 - schema-subset validation checks conditions, additional properties, types and dates
+  ---
+  duration_ms: 0.868254
+  type: 'test'
+  ...
+# (node:6456) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:6456) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: authenticated status polling does not extend server auto-lock
+ok 112 - authenticated status polling does not extend server auto-lock
+  ---
+  duration_ms: 1217.486746
+  type: 'test'
+  ...
+# Subtest: activity renews deadline, preferences persist and security headers are present
+ok 113 - activity renews deadline, preferences persist and security headers are present
+  ---
+  duration_ms: 541.929489
+  type: 'test'
+  ...
+# Subtest: API ETag rejects stale edits without destroying either saved text or history
+ok 114 - API ETag rejects stale edits without destroying either saved text or history
+  ---
+  duration_ms: 309.55804
+  type: 'test'
+  ...
+# Subtest: passphrase change locks vault, revokes bridge access and requires the replacement
+ok 115 - passphrase change locks vault, revokes bridge access and requires the replacement
+  ---
+  duration_ms: 1239.057926
+  type: 'test'
+  ...
+# Subtest: browser write token is bound to the extension origin that paired it
+ok 116 - browser write token is bound to the extension origin that paired it
+  ---
+  duration_ms: 306.8197
+  type: 'test'
+  ...
+# Subtest: JSON content-type lookalikes are rejected; Unicode prompt sizes obey character rather than ASCII limits
+ok 117 - JSON content-type lookalikes are rejected; Unicode prompt sizes obey character rather than ASCII limits
+  ---
+  duration_ms: 289.52168
+  type: 'test'
+  ...
+# Subtest: an in-flight extension write cannot survive revocation and a new vault unlock
+ok 118 - an in-flight extension write cannot survive revocation and a new vault unlock
+  ---
+  duration_ms: 577.608001
+  type: 'test'
+  ...
+# Subtest: template fields deduplicate and preserve first default in appearance order
+ok 119 - template fields deduplicate and preserve first default in appearance order
+  ---
+  duration_ms: 1.256336
+  type: 'test'
+  ...
+# Subtest: template replacement is single pass and inserted text remains literal data
+ok 120 - template replacement is single pass and inserted text remains literal data
+  ---
+  duration_ms: 0.229635
+  type: 'test'
+  ...
+# Subtest: template uses explicit empty values, defaults, repeated variables, and spaced names
+ok 121 - template uses explicit empty values, defaults, repeated variables, and spaced names
+  ---
+  duration_ms: 1.119471
+  type: 'test'
+  ...
+# Subtest: malformed template tokens are not evaluated or executed
+ok 122 - malformed template tokens are not evaluated or executed
+  ---
+  duration_ms: 0.115813
+  type: 'test'
+  ...
+# Subtest: template variable count and expanded output have explicit bounds
+ok 123 - template variable count and expanded output have explicit bounds
+  ---
+  duration_ms: 0.856836
+  type: 'test'
+  ...
+# (node:6483) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:6483) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: bounded ranker matches a full reference sort for every bounded capacity and input order
+ok 124 - bounded ranker matches a full reference sort for every bounded capacity and input order
+  ---
+  duration_ms: 43.577483
+  type: 'test'
+  ...
+# Subtest: ranking rejects invalid resource caps and stays sub-quadratic on deep result windows
+ok 125 - ranking rejects invalid resource caps and stays sub-quadratic on deep result windows
+  ---
+  duration_ms: 16.555719
+  type: 'test'
+  ...
+# Subtest: encrypted search pages preserve relevance, popularity, recent and stable tie-break order
+ok 126 - encrypted search pages preserve relevance, popularity, recent and stable tie-break order
+  ---
+  duration_ms: 311.382521
+  type: 'test'
+  ...
+# (node:6494) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:6494) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: v2 setup stores a wrapped random key, not the passphrase, and reopens after lock
+ok 127 - v2 setup stores a wrapped random key, not the passphrase, and reopens after lock
+  ---
+  duration_ms: 509.725553
+  type: 'test'
+  ...
+# Subtest: passphrase change preserves ciphertext/history/settings; old password no longer opens active envelope
+ok 128 - passphrase change preserves ciphertext/history/settings; old password no longer opens active envelope
+  ---
+  duration_ms: 1271.365242
+  type: 'test'
+  ...
+# Subtest: wrong current password cannot replace key metadata
+ok 129 - wrong current password cannot replace key metadata
+  ---
+  duration_ms: 484.179239
+  type: 'test'
+  ...
+# Subtest: legacy v1 upgrade re-wraps only after authenticating and retains record ciphertext
+ok 130 - legacy v1 upgrade re-wraps only after authenticating and retains record ciphertext
+  ---
+  duration_ms: 354.804791
+  type: 'test'
+  ...
+# Subtest: failed legacy metadata migration leaves original envelope usable
+ok 131 - failed legacy metadata migration leaves original envelope usable
+  ---
+  duration_ms: 662.0923
+  type: 'test'
+  ...
+# Subtest: failed passphrase metadata write preserves the current credential
+ok 132 - failed passphrase metadata write preserves the current credential
+  ---
+  duration_ms: 1019.785412
+  type: 'test'
+  ...
+# Subtest: failed fresh setup cleans its uncommitted empty DB and supports retry
+ok 133 - failed fresh setup cleans its uncommitted empty DB and supports retry
+  ---
+  duration_ms: 487.83416
+  type: 'test'
+  ...
+# Subtest: missing database fails closed instead of creating an empty vault during unlock
+ok 134 - missing database fails closed instead of creating an empty vault during unlock
+  ---
+  duration_ms: 247.622311
+  type: 'test'
+  ...
+# Subtest: untrusted KDF profiles and oversized metadata are rejected before key derivation
+ok 135 - untrusted KDF profiles and oversized metadata are rejected before key derivation
+  ---
+  duration_ms: 277.727759
+  type: 'test'
+  ...
+# (node:6505) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:6505) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: writing profiles are encrypted at rest, bounded, and survive restart
+ok 136 - writing profiles are encrypted at rest, bounded, and survive restart
+  ---
+  duration_ms: 20.275673
+  type: 'test'
+  ...
+# Subtest: style profiles reject tampering, invalid types, oversized or extra fields and stale edits
+ok 137 - style profiles reject tampering, invalid types, oversized or extra fields and stale edits
+  ---
+  duration_ms: 11.960425
+  type: 'test'
+  ...
+# Subtest: encrypted v3 backup includes profiles; preview is read-only and old v2 imports are supported
+ok 138 - encrypted v3 backup includes profiles; preview is read-only and old v2 imports are supported
+  ---
+  duration_ms: 16.852388
+  type: 'test'
+  ...
+# Subtest: writing profile count cap is enforced
+ok 139 - writing profile count cap is enforced
+  ---
+  duration_ms: 31.277622
+  type: 'test'
+  ...
+# Subtest: writing studio API uses bearer auth, explicit analysis, excerpt opt-in and safe lifecycle
+ok 140 - writing studio API uses bearer auth, explicit analysis, excerpt opt-in and safe lifecycle
+  ---
+  duration_ms: 351.876946
+  type: 'test'
+  ...
+# Subtest: standalone browser module creates portable style prompt
+ok 141 - standalone browser module creates portable style prompt
+  ---
+  duration_ms: 1.972483
+  type: 'test'
+  ...
+# Subtest: browser module refuses oversize input
+ok 142 - browser module refuses oversize input
+  ---
+  duration_ms: 0.306619
+  type: 'test'
+  ...
+# (node:6527) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: builds bounded deterministic opt-in profile
+ok 143 - builds bounded deterministic opt-in profile
+  ---
+  duration_ms: 2.813893
+  type: 'test'
+  ...
+# Subtest: rejects unbounded or missing samples
+ok 144 - rejects unbounded or missing samples
+  ---
+  duration_ms: 0.40713
+  type: 'test'
+  ...
+# Subtest: styles do not make any automatic network or file reads
+ok 145 - styles do not make any automatic network or file reads
+  ---
+  duration_ms: 0.170966
+  type: 'test'
+  ...
+1..145
+# tests 145
+# suites 0
+# pass 145
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 14041.101538

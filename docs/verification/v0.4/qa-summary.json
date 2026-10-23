@@ -1,0 +1,32 @@
+{
+  "version": "0.4.0",
+  "observed_env": {
+    "platform": "Linux",
+    "node": "22.16.0 compatibility",
+    "typeScript": "5.8.3",
+    "chromium": "144.0.7559.96"
+  },
+  "nodeTests": {
+    "pass": 81,
+    "fail": 0
+  },
+  "chromiumUIFixtures": {
+    "pass": 15,
+    "fail": 0,
+    "note": "Chromium actual UI with mocked API, not live browser-to-server E2E"
+  },
+  "contractCheck": "pass",
+  "jsSyntaxCheck": "pass",
+  "typecheck": "pass",
+  "syntheticReplay": "pass with Node22 --experimental-strip-types",
+  "liveBrowserEndToEnd": "blocked by administrator policy",
+  "nativeWindowsMacInstalls": "not built or verified",
+  "resourceProfileFiles": [
+    "node-resource-profile.json",
+    "v03-comparison-node-profile.json",
+    "chromium-low-memory.json",
+    "chromium-normal.json",
+    "backend-benchmark.json"
+  ],
+  "security": "No private credentials or vault user data in this release. Drafts are individually encrypted; whole-file SQLite encryption is not shipped."
+}

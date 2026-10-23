@@ -1,0 +1,1 @@
+The live Playwright-to-local-server Chromium navigation attempted in this environment was blocked by administrative browser policy: net::ERR_BLOCKED_BY_ADMINISTRATOR. No bypass or fixture substitution was attempted. Node backend HTTP integration and actual Chromium UI fixture testing were performed separately. Windows/macOS native installed test remains outstanding.

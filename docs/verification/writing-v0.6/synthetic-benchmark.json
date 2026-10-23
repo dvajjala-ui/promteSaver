@@ -1,0 +1,35 @@
+{
+  "version": "0.6.0",
+  "runtime": "v22.16.0",
+  "platform": "linux",
+  "arch": "x64",
+  "inputChars": {
+    "sampleTotal": 10610,
+    "proofread": 6158
+  },
+  "styleAnalysis": {
+    "iterations": 40,
+    "medianMs": 0.569,
+    "p95Ms": 1.055,
+    "maxMs": 1.137
+  },
+  "promptGeneration": {
+    "iterations": 40,
+    "medianMs": 0.002,
+    "p95Ms": 0.018,
+    "maxMs": 0.26
+  },
+  "proofread": {
+    "iterations": 40,
+    "medianMs": 0.118,
+    "p95Ms": 0.259,
+    "maxMs": 0.718
+  },
+  "rssMiB": 75,
+  "caveats": [
+    "Linux/Node synthetic CPU measurements only",
+    "Node RSS includes runtime and benchmark, not a whole desktop application",
+    "Warm repeat inputs, not P95 of an installed application",
+    "No model, background grammar service, or network activity"
+  ]
+}

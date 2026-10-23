@@ -1,0 +1,10 @@
+{
+  "os": "Linux",
+  "architecture": "x86_64",
+  "node": "v22.16.0",
+  "typescript": "Version 5.8.3",
+  "nodeTypes": "25.1.0",
+  "chromium": "Chromium 144.0.7559.96 built on Debian GNU/Linux 13 (trixie)",
+  "liveGroqKeyAvailable": false,
+  "nativeBuildPerformed": false
+}

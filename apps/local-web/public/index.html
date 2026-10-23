@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0c1015" />
+  <meta name="description" content="A private, offline prompt memory and template library." />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/app.css" />
+  <link rel="stylesheet" href="/features.css" />
+  <title>promteSaver — Your thinking, remembered.</title>
+  <link rel="stylesheet" href="/reliability.css" />
+  <link rel="stylesheet" href="/recovery.css" />
+  <link rel="stylesheet" href="/writing.css" />
+  <link rel="stylesheet" href="/workbench.css" />
+  <script type="module" src="/app.js"></script>
+<link rel="stylesheet" href="/assistant.css"></head>
+<body>
+  <a class="skip-link" href="#workspaceContent">Skip to library</a>
+  <main id="gate" class="gate" hidden>
+    <div class="gate-card">
+      <div class="logo lg"><span class="logo-mark">p<span class="logo-dot">.</span></span></div>
+      <div class="eyebrow"><span class="status-dot"></span> PRIVATE BY DESIGN</div>
+      <h1 id="gateTitle">Your ideas deserve a home.</h1>
+      <p id="gateDescription" class="muted">Create a secure local vault. Capture and cloud AI are off until you explicitly enable them. No tracking.</p>
+      <form id="gateForm" autocomplete="off">
+        <label for="passphrase">Vault passphrase</label>
+        <input id="passphrase" name="passphrase" type="password" minlength="12" required placeholder="At least 12 characters" autocomplete="new-password" />
+        <div id="confirmWrap"><label for="confirm">Confirm passphrase</label><input id="confirm" name="confirm" type="password" minlength="12" placeholder="Repeat your passphrase" autocomplete="new-password" /></div>
+        <p id="gateError" class="error-message" role="alert"></p>
+        <button id="gateAction" class="btn primary wide" type="submit">Create my vault <span>↗</span></button>
+        <div id="gateProgress" class="gate-progress" role="status" hidden>
+          <span class="secure-spinner" aria-hidden="true"></span><span id="gateProgressText">Working securely on this device...</span>
+          <button id="gateCancel" class="btn subtle" type="button">Cancel</button>
+        </div>
+      </form>
+      <div class="gate-footnote"><span>♧</span> Encrypted locally · No account · No AI API required</div>
+    </div>
+  </main>
+
+  <div id="shell" class="shell" hidden>
+    <aside class="sidebar" aria-label="Main navigation">
+      <div class="brand"><div class="logo"><span class="logo-mark">p<span class="logo-dot">.</span></span></div><div><strong>promteSaver</strong><small>PRIVATE WORKSPACE</small></div></div>
+      <div class="workspace"><span class="workspace-icon">✦</span><span><strong>Personal workspace</strong><small>Local vault</small></span><span class="workspace-chevron">⌄</span></div>
+      <div class="nav-heading">YOUR LIBRARY</div>
+      <nav id="mainNav" class="nav">
+        <button class="nav-item active" data-filter="all"><span class="nav-glyph">▦</span> All prompts <span id="navCount" class="nav-count">0</span></button>
+        <button class="nav-item" id="writingNav" type="button"><span class="nav-glyph">✎</span> Writing Studio <span class="nav-mini">new</span></button>
+        <button class="nav-item" id="assistantNav" type="button"><span class="nav-glyph">*</span> AI assistant <span class="nav-mini">opt-in</span></button><button class="nav-item" data-filter="pinned"><span class="nav-glyph">☆</span> Pinned</button>
+        <button class="nav-item" data-filter="templates"><span class="nav-glyph">◫</span> Templates</button>
+        <button class="nav-item" data-filter="recent"><span class="nav-glyph">◷</span> Recently used</button>
+        <button class="nav-item" data-filter="trash"><span class="nav-glyph">♲</span> Trash <span id="trashCount" class="nav-count">0</span></button>
+        <button class="nav-item" data-filter="captured"><span class="nav-glyph">⊞</span> Captured <span class="nav-mini">beta</span></button>
+      </nav>
+      <div class="nav-heading group-gap">WORKSPACE</div>
+      <nav class="nav"><button id="settingsNav" class="nav-item"><span class="nav-glyph">⚙</span> Settings & privacy</button></nav>
+      <div class="sidebar-bottom">
+        <div class="sidebar-tip"><span class="tip-star">✳</span><strong>Make your best work reusable.</strong><p>Turn the prompts you reach for into templates you can use anywhere.</p><button id="tipButton">Create a template <span>↗</span></button></div>
+        <div class="privacy-chip"><span class="status-dot"></span><span>Local-first <small>Capture and AI require opt-in</small></span></div>
+      </div>
+    </aside>
+
+    <section class="workspace-main" id="workspaceContent" role="main" tabindex="-1">
+      <header class="topbar">
+        <div class="crumb">Workspace <span>/</span> <strong id="crumbName">All prompts</strong></div>
+        <div class="top-actions"><button id="topSettings" class="wb-icon" type="button" aria-label="Settings" title="Settings">⚙</button><button id="inspectorToggle" class="wb-icon" type="button" aria-label="Toggle inspector" aria-pressed="true">▤</button><button id="focusToggle" class="wb-icon" type="button" aria-label="Focus mode" aria-pressed="false">◧</button><button id="lockButton" class="icon-button lock-btn" title="Lock vault" aria-label="Lock vault">♧ <span>Lock vault</span></button><div class="profile-dot" aria-label="Personal vault">P</div></div>
+      </header>
+
+      <div class="page-scroll">
+        <section id="libraryView" class="library-view">
+          <div class="hero">
+            <div class="hero-copy"><div class="eyebrow"><span class="star-outline">✳</span> YOUR SECOND BRAIN FOR PROMPTS</div><h1>A home for<br /><em>your best thinking.</em></h1><p>A private library for prompts, ideas and reusable instructions. Search, adapt and copy in seconds.</p><div class="hero-actions"><button id="heroNew" class="btn primary">＋ &nbsp; Save a prompt</button><span>Ctrl / ⌘ K · quick find</span></div></div>
+            <div class="hero-art" aria-hidden="true"><div class="art-ring one"></div><div class="art-ring two"></div><div class="art-orb"><div class="art-spark">✳</div></div><div class="art-mini-card one">✦ &nbsp; A better idea, saved.</div><div class="art-mini-card two">⌘ &nbsp; Reuse in seconds.</div><div class="art-dots"></div></div>
+          </div>
+          <section id="draftRecovery" class="draft-recovery" aria-label="Recover unsaved edits" hidden>
+            <div class="draft-heading"><div><strong>Unsaved work, safely recovered</strong><p>Encrypted drafts from an interrupted editor. Review, save as a new prompt, or discard. Drafts aren't included in portable backups.</p></div><span class="draft-label">LOCAL ONLY</span></div>
+            <div id="draftList" class="draft-list"></div>
+          </section>
+          <div class="stats" aria-label="Library statistics"><div class="stat"><span class="stat-icon mint">▣</span><span><strong id="statTotal">0</strong><small>Saved prompts</small></span></div><div class="stat"><span class="stat-icon lavender">◫</span><span><strong id="statTemplates">0</strong><small>Reusable templates</small></span></div><div class="stat"><span class="stat-icon amber">☆</span><span><strong id="statPinned">0</strong><small>Pinned favorites</small></span></div></div>
+          <div class="section-top"><div><div class="eyebrow mini">YOUR COLLECTION</div><h2 id="sectionTitle">All prompts</h2><p class="muted" id="sectionDescription">Everything worth keeping, in one place.</p></div><div class="section-actions"><div class="wb-layout" role="group" aria-label="Library layout"><button id="cardLayout" type="button" aria-pressed="true">▦ Cards</button><button id="listLayout" type="button" aria-pressed="false">☰ List</button></div><button id="quickButton" class="btn subtle" type="button">⌕ &nbsp; Quick find</button><button id="newButton" class="btn outline">＋ &nbsp; New prompt</button></div></div>
+          <div class="toolbar"><div class="search-wrap"><span aria-hidden="true">⌕</span><input id="searchInput" type="search" placeholder="Search across prompts, tags, and projects..." aria-label="Search saved prompts" /><kbd>⌘ K</kbd></div><div id="filterPills" class="filter-pills"><button data-filter="all" class="pill active">All</button><button data-filter="pinned" class="pill">Pinned</button><button data-filter="templates" class="pill">Templates</button></div></div>
+          <div class="advanced-filters" aria-label="Filter the saved library">
+            <label>Project <select id="projectFilter" aria-label="Filter by project"><option value="">Every project</option></select></label>
+            <label>Tag <select id="tagFilter" aria-label="Filter by tag"><option value="">Every tag</option></select></label>
+            <label>Order <select id="sortFilter" aria-label="Sort results"><option value="updated">Recently edited</option><option value="relevance">Best match</option><option value="popular">Most reused</option></select></label>
+            <button id="refreshLibrary" class="btn subtle" type="button" title="Refresh saved and captured prompts">Refresh</button><button id="clearFilters" class="btn subtle" type="button">Reset</button>
+          </div>
+          <div class="selection-row" id="selectionRow"><label><input type="checkbox" id="selectPage" /> Select this page</label><span id="selectedCount">0 selected</span></div>
+          <div id="bulkControls" class="bulk-controls" hidden role="group" aria-label="Selected prompt actions"><button id="bulkPin" class="btn subtle" type="button">Pin</button><button id="bulkUnpin" class="btn subtle" type="button">Unpin</button><button id="bulkMove" class="btn subtle" type="button">Move to project</button><button id="bulkTrash" class="btn subtle" type="button">Move to trash</button><button id="bulkRestore" class="btn subtle" type="button">Restore selected</button><button id="bulkClear" class="btn subtle" type="button">Clear selection</button></div>
+          <div id="listInfo" class="list-info" aria-live="polite"></div>
+          <div id="itemsList" class="items-list" aria-live="polite"></div>
+          <nav class="more-row" aria-label="Prompt result pages"><button id="previousPage" class="btn outline" type="button" hidden>Previous page</button><button id="loadMoreButton" class="btn outline" type="button" hidden>Next page</button></nav>
+          <div id="emptyState" class="empty-state" hidden><div class="empty-symbol">✳</div><h3 id="emptyTitle">A fresh start.</h3><p id="emptyDescription">Save your first prompt, or start with a few example templates to explore.</p><div class="empty-actions"><button id="emptyNew" class="btn primary">Save your first prompt</button><button id="demoButton" class="btn outline">Add example prompts</button></div></div>
+          <footer class="app-footer">Local-first. Cloud AI only with your approval. <span>promteSaver · Capture &amp; AI Pilot 0.9</span></footer>
+        </section>
+        <section id="writingView" class="writing-studio" hidden aria-labelledby="writingPageTitle">
+          <div class="writing-heading">
+            <div><div class="eyebrow mini">LOCAL-FIRST PERSONAL WRITING</div><h1 id="writingPageTitle">Your writing, your voice.</h1><p>Build a writing profile from samples you explicitly choose. Your profile stays encrypted in this vault. Nothing is recorded or sent to an AI service.</p></div>
+            <span class="writing-privacy">♧ &nbsp; ON-DEVICE · OPT-IN</span>
+          </div>
+          <nav class="wb-writing-steps" aria-label="Writing Studio sections"><button type="button" data-pane="styleBuildTitle">01 Profile</button><button type="button" data-pane="styleUseTitle">02 Compose</button><button type="button" data-pane="styleProofTitle">03 Review</button><button type="button" data-pane="styleExportTitle">04 Export</button></nav><div class="writing-overview"><strong>Writing DNA</strong><span>Different voices for work, personal messages and developer docs. Create portable instructions—not a clone of your identity.</span><button class="btn outline" id="styleNew" type="button">＋ New profile</button></div>
+          <div class="writing-layout">
+            <aside class="writing-list-card" aria-label="Saved writing profiles">
+              <h2>Saved profiles <span id="styleCount">0</span></h2><p>Choose a profile to adapt your next message.</p>
+              <div id="styleProfileList" class="writing-profiles" role="group"></div>
+            </aside>
+            <div class="writing-content">
+              <section class="writing-panel" aria-labelledby="styleBuildTitle">
+                <div class="writing-panel-head"><span class="writing-step">01</span><div><h2 id="styleBuildTitle">Learn your style</h2><p>Use writing you own or have permission to use. Never paste credentials or private third-party conversations.</p></div></div>
+                <form id="styleForm" autocomplete="off">
+                  <label for="styleName">Profile name</label><input id="styleName" maxlength="80" placeholder="e.g. My work emails" required />
+                  <label for="styleSamples">Your writing samples <small>(separate samples with a line containing ---)</small></label>
+                  <textarea id="styleSamples" spellcheck="false" rows="5" maxlength="122000" placeholder="Paste a message you wrote, then a line with --- before another sample."></textarea>
+                  <p class="writing-help">1–12 samples, 10,000 characters each. Analysis runs only when you press Analyze. The analysis uses samples temporarily. Excerpts are saved only if you explicitly opt in below.</p>
+                  <label class="writing-consent"><input id="styleRetainExamples" type="checkbox" /><span>Keep up to 700 characters from each sample in the encrypted profile <small>Off by default. Profile metrics, tone and phrasing remain useful without saved excerpts. If enabled, those excerpts can later be added to AI instructions only with separate permission.</small></span></label>
+                  <details id="styleExampleReview" class="writing-sample-review" hidden><summary>Review sample excerpts before saving</summary><div id="styleExampleList"></div></details>
+                  <div class="writing-two"><div><label for="styleTone">Tone preference</label><input id="styleTone" maxlength="160" value="Natural, clear and direct" /></div><div><label for="styleAudience">Audience</label><input id="styleAudience" maxlength="160" value="Adapt to the intended reader" /></div></div>
+                  <label for="styleAvoid">Avoid words or styles <small>(comma separated)</small></label><input id="styleAvoid" maxlength="3000" placeholder="hype, unnecessary jargon, long introductions" />
+                  <div class="writing-actions"><button id="styleAnalyze" class="btn outline" type="button">✳ Analyze samples</button><button id="styleSave" class="btn primary" type="submit">Save encrypted profile ↗</button><button id="styleDelete" class="btn subtle writing-danger" type="button" hidden>Delete profile</button></div>
+                  <p id="styleAnalysisStatus" class="writing-status" role="status" aria-live="polite">Paste samples and select Analyze to create a profile.</p>
+                  <div id="styleAnalytics" class="writing-metrics" hidden></div>
+                </form>
+              </section>
+              <section class="writing-panel" aria-labelledby="styleUseTitle">
+                <div class="writing-panel-head"><span class="writing-step">02</span><div><h2 id="styleUseTitle">Write like yourself</h2><p>Prepare instructions for any AI tool. Review them before copying; the optional AI assistant can send a reviewed request to Groq. No AI model runs on this computer.</p></div></div>
+                <label for="styleTask">What should the AI write or rewrite?</label><textarea id="styleTask" maxlength="12000" rows="4" placeholder="Rewrite this project update so it sounds like me, while preserving the facts..."></textarea>
+                <label class="writing-consent"><input id="styleIncludeExamples" type="checkbox" /><span>Include sample excerpts and recurring phrases in the generated instructions <small>Off by default. Only enable when you're comfortable sharing them with an AI tool.</small></span></label>
+                <div class="writing-actions"><button id="styleGenerate" class="btn primary" type="button">✦ Prepare style instructions</button></div>
+                <label for="styleInstructions">Your generated AI instructions <small>(editable before use)</small></label><textarea id="styleInstructions" maxlength="30000" rows="8" placeholder="Your private style instructions will appear here. You can review and edit them." spellcheck="false"></textarea>
+                <div class="writing-actions"><button id="styleCopy" class="btn outline" type="button">Copy instructions</button><button id="styleDownload" class="btn subtle" type="button">Download .md</button><button id="styleSaveTemplate" class="btn subtle" type="button">Save as prompt</button></div>
+                <p id="styleUseStatus" class="writing-status" role="status" aria-live="polite">Instructions are not an actual rewrite. Paste them into an AI tool to generate one.</p>
+              </section>
+              <section class="writing-panel" aria-labelledby="styleProofTitle">
+                <div class="writing-panel-head"><span class="writing-step">03</span><div><h2 id="styleProofTitle">A second pair of eyes</h2><p>Run lightweight checks for spacing, possible repeated words, punctuation and readability. English heuristics only—not full grammar correction.</p></div></div>
+                <label for="styleProofText">Text to check <small>(explicit paste only)</small></label>
+                <textarea id="styleProofText" rows="5" maxlength="12000" placeholder="Paste a draft or generated answer here. No keystrokes are monitored elsewhere."></textarea>
+                <div class="writing-actions"><button class="btn outline" id="styleProofCheck" type="button">⌕ Check writing locally</button><button class="btn subtle" id="styleProofClear" type="button">Clear</button></div>
+                <p class="writing-status" id="styleProofStatus" role="status">Suggestions are optional. Nothing is corrected without your click.</p>
+                <div id="styleProofIssues" class="writing-issues" aria-live="polite"></div>
+              </section>
+              <section class="writing-panel writing-export" aria-labelledby="styleExportTitle"><div class="writing-panel-head"><span class="writing-step">04</span><div><h2 id="styleExportTitle">Take your style anywhere</h2><p>Export a portable JSON profile for another device or AI workflow. The file is unencrypted—review its contents and where you store it.</p></div></div><button id="styleExport" class="btn outline" type="button">Export reviewed profile .json</button><p class="writing-help">Sample excerpts and recurring phrases are omitted unless the sharing checkbox is checked above. Encrypted vault backups automatically include saved profiles.</p></section>
+            </div>
+          </div>
+          <footer class="app-footer">Private by design · No background keyboard monitoring · No AI API required <span>promteSaver · Writing Studio Beta</span></footer>
+        </section>
+        <section id="settingsView" class="settings-view" hidden><div class="eyebrow mini">WORKSPACE CONTROL</div><h1>Privacy & settings</h1><p class="muted">Your vault is designed for explicit control, local-first use, and limited resource consumption.</p><div class="settings-grid"><div class="settings-card"><span class="settings-illustration">♧</span><h3>Local encrypted vault</h3><p>Stored as AES-256-GCM encrypted records in SQLite. Metadata and the SQLite file structure are not fully encrypted.</p><small>Data lives in your local data directory. Keep the complete vault folder, including keyinfo.json, for recovery. The key file now contains the wrapped archive key.</small></div><div class="settings-card"><span class="settings-illustration">⊘</span><h3>Capture is opt-in</h3><p>The browser companion can observe known AI composers after per-site approval. It does not record all applications or your clipboard.</p><small>Native capture will require separate consent, OS permissions, exclusions, and per-app verification.</small></div><div class="settings-card"><span class="settings-illustration">◌</span><h3>Cloud AI is optional</h3><p>The app serves assets and API requests only on 127.0.0.1, with per-session authorization.</p><small>No trackers or cloud sync. Groq requests require a locally configured key, a preview and explicit consent.</small></div><div class="settings-card"><span class="settings-illustration">◷</span><h3>Automatic lock</h3><p id="idleLabel">The local session locks after 15 minutes without authenticated activity.</p><small>Close the terminal to stop the local service. Back up the vault files before upgrading.</small></div></div>
+        <section class="runtime-panel" aria-labelledby="runtimeTitle">
+          <div class="runtime-heading"><div><div class="eyebrow mini">ON-DEMAND DIAGNOSTICS</div><h2 id="runtimeTitle">This device, at a glance</h2></div><span class="runtime-local">Local only</span></div>
+          <p class="muted">Check the service without reading your saved prompts. Nothing runs continuously and no report is uploaded.</p>
+          <dl class="runtime-grid">
+            <div><dt>Service memory</dt><dd id="healthMemory">Not measured</dd><small>Node process only, not the whole app</small></div>
+            <div><dt>Resource profile</dt><dd id="healthProfile">Not checked</dd><small>Change the preference below</small></div>
+            <div><dt>Local storage</dt><dd id="healthStorage">Not checked</dd><small>Encrypted records plus metadata</small></div>
+            <div><dt>Application runtime</dt><dd id="healthRuntime">Not checked</dd><small id="healthRuntimeNote">Source beta, not a signed installer</small></div>
+          </dl>
+          <div class="runtime-actions"><button type="button" id="healthRefresh" class="btn outline">Check this device</button><button type="button" id="healthExport" class="btn subtle" disabled>Save diagnostic report</button></div>
+          <p class="runtime-note" id="healthStatus" role="status">Reports include runtime versions and resource figures, never prompts, keys, session links or file paths.</p>
+        </section>
+        <section class="preferences-panel" aria-labelledby="preferencesTitle">
+          <div class="eyebrow mini">MAKE IT YOURS</div><h2 id="preferencesTitle">Privacy & performance</h2>
+          <form id="preferencesForm"><div class="preferences-fields">
+            <div><label for="prefIdle">Lock after inactivity (minutes)</label><input id="prefIdle" type="number" min="1" max="120" step="1" required /><small>Between 1 and 120 minutes. Status checks never keep the vault unlocked.</small></div>
+            <label class="check-option"><input id="prefLowMemory" type="checkbox" /><span><strong>Low-memory mode</strong><small>20 cards per page, two cached result pages, shorter previews and no decorative animation.</small></span></label>
+            <label class="check-option"><input id="prefCompact" type="checkbox" /><span><strong>Compact library</strong><small>Hide the large welcome banner and use a denser list.</small></span></label>
+            <label class="check-option"><input id="prefHide" type="checkbox" /><span><strong>Lock when this tab becomes hidden</strong><small>Switching tabs or minimizing locks all vault windows. Unsaved drafts will be discarded.</small></span></label>
+          </div><button class="btn primary" type="submit" id="savePreferences">Save preferences</button><p id="preferencesNotice" class="muted" role="status"></p></form>
+          <div class="password-actions"><h3>Change your vault passphrase</h3><p class="muted">Re-wrap the archive key without rewriting your saved prompts. Previously copied key files and old backups are not revoked.</p><button id="changePassphrase" class="btn outline" type="button">Change passphrase</button></div>
+        </section>
+        <section class="backup-panel" aria-label="Backup and recovery">
+          <div><div class="eyebrow mini">YOUR DATA, YOUR CONTROL</div><h2>Encrypted backups</h2><p class="muted">Export a portable <code>.pomte</code> archive with its own passphrase. It includes saved prompts, writing profiles, version history and captured snapshots. Preview the restore before importing. Existing IDs are preserved; saved capture deletions are respected.</p></div>
+          <div class="backup-actions"><button id="exportBackup" class="btn primary" type="button">↓ Export encrypted backup</button><button id="importBackup" class="btn outline" type="button">↑ Import encrypted backup</button><button id="importMarkdown" class="btn subtle" type="button">Import a Markdown / text prompt</button><input type="file" id="backupFile" accept=".pomte,application/octet-stream" hidden /><input type="file" id="markdownFile" accept=".md,.markdown,.txt,text/plain,text/markdown" hidden /></div>
+          <p class="backup-warning">Your vault passphrase alone cannot restore lost data. Keep a secure backup and its passphrase. Backups are encrypted, but exported files must still be protected.</p>
+        </section>
+        <section class="bridge-panel" aria-label="Browser helper pairing">
+          <div class="eyebrow mini">OPTIONAL BROWSER COMPANION</div><h2>Save from Chrome & Edge</h2>
+          <p class="muted">Pair the unpacked helper only when you want it. The temporary pairing code gives the helper <strong>write-only</strong> access. Manual Save remains available. For automatic send-intent snapshots, approve the three supported sites below, then enable each site in the extension. This is not a recorder for all software.</p>
+          <label class="consent-row"><input id="bridgeAuto" type="checkbox"><span>Allow this pairing to capture send-intent snapshots on ChatGPT, Claude and Gemini. Each site still needs separate extension opt-in. Locking revokes capture; offline prompts are not queued.</span></label><div class="backup-actions"><button id="generatePair" class="btn outline" type="button">Generate a pairing code</button><button id="revokePair" class="btn subtle" type="button">Revoke helper access</button></div>
+          <div id="pairCodeWrap" hidden><label for="pairCode">Copy this one-time code into the browser helper (expires in 10 minutes)</label><div class="pair-code-row"><input id="pairCode" readonly autocomplete="off" spellcheck="false" /><button id="copyPairCode" class="btn outline" type="button">Copy</button></div></div>
+          <p id="bridgeStatus" class="muted" role="status">Checking whether a browser helper is paired...</p>
+        </section>
+        <section class="ai-connection" aria-labelledby="groqTitle"><div class="eyebrow mini">OPTIONAL CLOUD CONNECTION</div><h2 id="groqTitle">Groq, only when you ask.</h2><p class="muted">Save the key on your own device. It is encrypted in the vault and excluded from portable backups. Sending text to Groq is an external upload and may incur provider charges. There is no cloud inference while typing.</p><div class="ai-config-grid"><div><label for="groqKey">Groq API key (leave blank to keep saved key)</label><input id="groqKey" type="password" autocomplete="off" spellcheck="false" maxlength="204" placeholder="Enter locally - never paste into a chat"></div><div><label for="groqModel">Model ID</label><input id="groqModel" type="text" maxlength="100" value="llama-3.3-70b-versatile"></div></div><label class="consent-row"><input id="groqEnabled" type="checkbox"><span>Enable explicit Groq requests after I review their payload. My writing samples are not sent automatically.</span></label><div class="ai-actions"><button id="groqSave" type="button" class="btn primary">Save connection</button><button id="groqRemove" type="button" class="btn outline">Remove saved key</button></div><p id="groqState" role="status" class="muted">Not checked.</p></section><div class="settings-bottom-actions"><button id="settingsLock" class="btn outline">Lock vault now</button></div><button id="settingsBack" class="btn subtle">← Back to library</button></section>
+      </div>
+    </section>
+  <aside id="wbInspector" class="wb-inspector" aria-label="Prompt details"><header><div><small>INSPECTOR</small><h2>Prompt details</h2></div><button id="wbClose" aria-label="Close inspector" type="button">×</button></header><div id="wbEmpty" class="wb-empty"><div class="wb-empty-icon">✦</div><h3>Make your work reusable.</h3><p>Select a saved prompt to inspect it, review its contents and find your next action.</p><div class="wb-hints">QUICK ACCESS <p>Quick find <kbd>Ctrl/⌘ K</kbd></p><p>New prompt <kbd>Ctrl/⌘ N</kbd></p></div></div><div id="wbDetail" class="wb-detail" hidden><small id="wbKind"></small><h3 id="wbTitle"></h3><p id="wbMeta"></p><div class="wb-commands"><button id="wbCopy" type="button">⧉ Copy</button><button id="wbAi" type="button">AI assist</button><button id="wbEdit" type="button">✎ Edit</button></div><h4>CONTENT</h4><pre id="wbBody"></pre><h4>CONTEXT</h4><dl><div><dt>Project</dt><dd id="wbProject"></dd></div><div><dt>Source</dt><dd id="wbSource"></dd></div><div><dt>Updated</dt><dd id="wbDate"></dd></div></dl><div id="wbTags"></div></div><footer>● &nbsp;Local encrypted vault</footer></aside>
+  </div>
+  <dialog id="editorDialog" class="editor-dialog" aria-labelledby="modalTitle"><form id="editorForm"><div class="modal-top"><div><div class="eyebrow mini">YOUR PERSONAL LIBRARY</div><h2 id="modalTitle">Save a prompt</h2></div><button type="button" id="closeDialog" class="modal-close" aria-label="Close dialog">×</button></div><div class="modal-scroll"><div class="two-field"><div><label for="entryTitle">Title</label><input id="entryTitle" maxlength="140" placeholder="e.g. Review a pull request" required /></div><div><label for="entryKind">Save as</label><select id="entryKind"><option value="prompt">Prompt</option><option value="template">Template</option></select></div></div><div class="entry-body-heading"><label for="entryBody">Prompt text</label><button id="pasteClipboard" type="button" class="btn subtle">Paste from clipboard</button></div><textarea id="entryBody" rows="10" maxlength="100000" placeholder="Write or paste your prompt here..." required></textarea><p class="field-help">Use <code>{{variable}}</code> in templates. Finished library entries redact obvious credentials; unsaved recovery drafts are encrypted exactly as typed.</p><p id="draftStatus" class="draft-status" aria-live="polite">Unsaved edits are encrypted locally after 1.3 seconds without typing. They are not included in portable backups.</p><div class="two-field"><div><label for="entryProject">Project / collection</label><input id="entryProject" maxlength="80" placeholder="Personal, Development..." /></div><div><label for="entryTags">Tags <span>(comma-separated)</span></label><input id="entryTags" placeholder="writing, debugging, planning" /></div></div><div class="two-field metadata-fields"><div><label for="entrySource">Used with (optional)</label><input id="entrySource" maxlength="80" placeholder="ChatGPT, Claude, Cursor..." /></div><div><label for="entryNotes">Why it worked (optional)</label><textarea id="entryNotes" rows="2" maxlength="2000" placeholder="When to use this; what output to expect..."></textarea></div></div><label class="pin-label"><input id="entryPinned" type="checkbox" /><span>☆ &nbsp; Pin to favorites</span></label></div><p id="editorError" class="error-message editor-error" role="alert"></p><div class="modal-footer"><button type="button" id="saveDraftAsNew" class="btn outline" hidden>Save draft as a new prompt</button><button type="button" id="cancelDialog" class="btn subtle">Cancel</button><button type="submit" class="btn primary" id="saveEntry">Save to vault ↗</button></div></form></dialog>
+  <dialog id="historyDialog" class="editor-dialog history-dialog" aria-labelledby="historyTitle"><div class="modal-top"><div><div class="eyebrow mini">VERSION HISTORY</div><h2 id="historyTitle">Earlier versions</h2></div><button type="button" id="closeHistory" class="modal-close" aria-label="Close version history">×</button></div><div id="historyList" class="history-list"></div><div class="modal-footer"><button type="button" id="doneHistory" class="btn outline">Done</button></div></dialog>
+  <dialog id="quickDialog" class="quick-dialog" aria-labelledby="quickTitle">
+    <div class="quick-head"><div><div class="eyebrow mini">FAST RECALL</div><h2 id="quickTitle">Find and reuse</h2></div><button type="button" id="closeQuick" class="modal-close" aria-label="Close quick find">×</button></div>
+    <label for="quickSearch" class="sr-only">Find a prompt</label><input type="search" id="quickSearch" role="combobox" aria-autocomplete="list" aria-controls="quickResults" aria-expanded="false" placeholder="Search prompts, templates, tags..." autocomplete="off" />
+    <div id="quickResults" class="quick-results" role="listbox" aria-label="Matching prompts"></div>
+    <div class="quick-footer">↑↓ Navigate <span>↵ Copy or fill template</span><span>Esc Close</span></div>
+  </dialog>
+  <dialog id="templateDialog" class="template-dialog" aria-labelledby="templateTitle">
+    <div class="modal-top"><div><div class="eyebrow mini">REUSABLE TEMPLATE</div><h2 id="templateTitle">Fill the blanks</h2></div><button type="button" id="closeTemplate" class="modal-close" aria-label="Close template">×</button></div>
+    <form id="templateForm"><div id="templateVariables" class="template-variables"></div><label for="templatePreview">Preview</label><textarea id="templatePreview" rows="8" readonly></textarea><div class="modal-footer"><button type="button" id="cancelTemplate" class="btn subtle">Cancel</button><button type="submit" class="btn primary">Copy finished prompt ↗</button></div></form>
+  </dialog>
+  <dialog id="backupDialog" class="backup-dialog" aria-labelledby="backupTitle">
+    <form id="backupForm"><div class="modal-top"><div><div class="eyebrow mini">ENCRYPTED PORTABLE FILE</div><h2 id="backupTitle">Create a backup</h2></div><button type="button" id="closeBackup" class="modal-close" aria-label="Close backup">×</button></div>
+      <p id="backupExplain" class="muted"></p><label for="backupPassphrase">Backup passphrase (at least 12 characters)</label><input type="password" id="backupPassphrase" minlength="12" autocomplete="new-password" required />
+      <div id="backupConfirmWrap"><label for="backupConfirm">Confirm backup passphrase</label><input type="password" id="backupConfirm" minlength="12" autocomplete="new-password" /></div>
+      <div id="backupPreview" class="restore-review" hidden role="status"></div><p id="backupError" class="error-message" role="alert"></p><div class="modal-footer"><button type="button" id="cancelBackup" class="btn subtle">Cancel</button><button type="submit" id="doBackup" class="btn primary">Continue</button></div></form>
+  </dialog>
+  <dialog id="passphraseDialog" class="backup-dialog" aria-labelledby="passphraseTitle"><form id="passphraseForm">
+    <div class="modal-top"><div><div class="eyebrow mini">PROTECT YOUR VAULT</div><h2 id="passphraseTitle">Change passphrase</h2></div><button type="button" id="closePassphrase" class="modal-close" aria-label="Close passphrase change">&times;</button></div>
+    <p class="muted">Your prompts and history stay intact. After this change, the vault locks and browser-helper access is revoked. Backups retain their own passphrases.</p>
+    <label for="currentPassphrase">Current passphrase</label><input id="currentPassphrase" type="password" autocomplete="current-password" minlength="12" maxlength="1024" required />
+    <label for="newPassphrase">New passphrase</label><input id="newPassphrase" type="password" autocomplete="new-password" minlength="12" maxlength="1024" required />
+    <label for="confirmNewPassphrase">Confirm new passphrase</label><input id="confirmNewPassphrase" type="password" autocomplete="new-password" minlength="12" maxlength="1024" required />
+    <p id="passphraseError" class="error-message" role="alert"></p><div class="modal-footer"><button id="cancelPassphrase" type="button" class="btn subtle">Cancel</button><button id="doPassphrase" type="submit" class="btn primary">Update and lock vault</button></div>
+  </form></dialog>
+  <dialog id="actionDialog" class="modal" aria-labelledby="actionTitle">
+    <form id="actionForm">
+      <h2 id="actionTitle">Please confirm</h2>
+      <p id="actionMessage"></p>
+      <label id="actionInputWrap" hidden><span id="actionInputLabel">Value</span><textarea id="actionInput" rows="6" maxlength="1000000"></textarea></label>
+      <div class="dialog-actions"><button type="button" id="actionCancel" class="btn outline">Cancel</button><button type="submit" id="actionAccept" class="btn primary">Continue</button></div>
+    </form>
+  </dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+<dialog id="aiDialog" class="ai-dialog" aria-labelledby="aiTitle"><header class="ai-top"><div><div class="eyebrow mini">THINK CLEARLY / KEEP YOUR VOICE</div><h2 id="aiTitle">Your writing, assisted.</h2></div><button id="aiClose" class="btn subtle" type="button" aria-label="Close AI assistant">Close</button></header><div class="ai-columns"><section class="ai-column"><div class="ai-output-label"><strong>Your source</strong><span>Original stays unchanged</span></div><div class="ai-options"><div><label for="aiAction">Task</label><select id="aiAction"><option value="improve">Improve prompt</option><option value="summarize">Summarize</option><option value="structure">Structure request</option><option value="rewrite">Rewrite in my style</option></select></div><div><label for="aiStyle">Writing profile</label><select id="aiStyle"><option value="">No writing profile</option></select></div></div><label for="aiInput">Text to transform (12,000 characters maximum)</label><textarea id="aiInput" maxlength="12000" spellcheck="true" placeholder="Choose a saved prompt or write here..."></textarea><div class="ai-actions"><button id="aiPreview" class="btn primary" type="button">Preview outgoing text</button><button id="aiConfigLink" class="btn subtle" type="button">Connection settings</button></div></section><div class="ai-column"><div class="ai-output-label"><strong>AI draft</strong><span>Review before use</span></div><label for="aiOutput">Generated result</label><textarea id="aiOutput" readonly placeholder="Nothing is sent until you review the preview and approve it."></textarea><div class="ai-actions"><button id="aiSave" class="btn outline" type="button" disabled>Save as a new prompt</button><button id="aiCopy" class="btn subtle" type="button" disabled>Copy result</button></div><p class="muted">AI can make mistakes. This draft does not replace your source or change another application's editor.</p></div></div><section id="aiPreviewWrap" class="ai-send-review" hidden><label for="aiPreviewText">Exact messages prepared for Groq (local preview)</label><textarea id="aiPreviewText" readonly></textarea><label class="consent-row"><input id="aiConsent" type="checkbox"><span>I reviewed this content and approve sending it to Groq's cloud API. Redaction is best-effort. Provider usage charges may apply.</span></label><div class="ai-actions"><button id="aiSend" type="button" class="btn primary" disabled>Send reviewed request</button><button id="aiCancel" type="button" class="btn outline" hidden>Cancel request</button></div></section><p id="aiStatus" class="ai-status" role="status" aria-live="polite"></p></dialog></body>
+</html>

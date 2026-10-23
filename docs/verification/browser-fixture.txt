@@ -1,0 +1,36 @@
+PASS Setup, sample prompts, and password-field clearing
+PASS Stale-edit conflict preserves draft and supports save-as-new
+PASS Template inserted values remain literal in the UI
+PASS Dirty-editor discard confirmation is keyboard accessible and cancellable
+PASS Bounded bulk move updates selected prompts
+PASS Previous/next pagination replaces rather than appends cards
+PASS Low-memory/compact preferences and keyboard quick finder
+PASS Restore preview, explicit confirmation, and secret clearing
+PASS Incorrect current passphrase preserves the authenticated settings dialog
+PASS Passphrase change locks UI and replacement unlocks
+PASS Desktop/mobile responsive layout and screenshots
+PASS Lock purges decrypted DOM and discards late responses
+PASS Idle deadline clears visible content without periodic activity renewal
+{
+  "mode": "fixture",
+  "scope": "Actual UI with mocked in-page API; not live E2E",
+  "passed": [
+    "Setup, sample prompts, and password-field clearing",
+    "Stale-edit conflict preserves draft and supports save-as-new",
+    "Template inserted values remain literal in the UI",
+    "Dirty-editor discard confirmation is keyboard accessible and cancellable",
+    "Bounded bulk move updates selected prompts",
+    "Previous/next pagination replaces rather than appends cards",
+    "Low-memory/compact preferences and keyboard quick finder",
+    "Restore preview, explicit confirmation, and secret clearing",
+    "Incorrect current passphrase preserves the authenticated settings dialog",
+    "Passphrase change locks UI and replacement unlocks",
+    "Desktop/mobile responsive layout and screenshots",
+    "Lock purges decrypted DOM and discards late responses",
+    "Idle deadline clears visible content without periodic activity renewal"
+  ],
+  "skipped": [],
+  "errors": [],
+  "browser": "144.0.7559.96",
+  "result": "passed"
+}

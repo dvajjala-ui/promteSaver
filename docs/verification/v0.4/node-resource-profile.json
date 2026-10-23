@@ -1,0 +1,23 @@
+{
+  "version": "resource-profile-v1",
+  "node": "v22.16.0",
+  "platform": "posix",
+  "records": 300,
+  "startupReadinessMs": 171.37,
+  "firstStatusMs": 15.05,
+  "setupWithKdfMs": 236.95,
+  "warmPageMs": 2.46,
+  "pagedReadMedianMs": 1.44,
+  "uncachedTextQueryMedianMs": 5.89,
+  "idleSeconds": 3.0,
+  "idleCpuPercentOfOneCore": 0.0,
+  "idleRSSMiB": 102.07,
+  "idleProcessCount": 1,
+  "lockMs": 4.99,
+  "notes": [
+    "Temporary synthetic vault only",
+    "Node and its descendants, no Chromium/WebView process",
+    "RSS is a snapshot and not peak memory",
+    "This script measures Linux here; Windows and macOS remain unverified"
+  ]
+}

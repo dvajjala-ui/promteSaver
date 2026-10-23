@@ -1,0 +1,40 @@
+# Secrets and machine-specific settings
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pomte
+*.bak
+*.p12
+*.pfx
+
+# Captured data must never enter the repository
+data/
+captures/
+exports/
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+*.log
+
+# Build products and local tooling
+node_modules/
+target/
+dist/
+.next/
+.turbo/
+coverage/
+.local/
+*.tsbuildinfo
+.DS_Store
+Thumbs.db
+
+# Desktop runtime staging (regenerate locally; never commit credentials or binaries)
+apps/desktop/src-tauri/binaries/
+apps/desktop/src-tauri/runtime/
+.vault-session.lock
+__pycache__/

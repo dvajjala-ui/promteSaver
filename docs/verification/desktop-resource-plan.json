@@ -1,0 +1,29 @@
+{
+  "mode": "plan-only",
+  "target": "x86_64-unknown-linux-gnu",
+  "node": "22.16.0",
+  "nodeTargetMet": false,
+  "files": [
+    "apps/desktop/sidecar.ts",
+    "apps/local-web/backup.ts",
+    "apps/local-web/key-envelope.ts",
+    "apps/local-web/process-lease.ts",
+    "apps/local-web/public/app.css",
+    "apps/local-web/public/app.js",
+    "apps/local-web/public/favicon.svg",
+    "apps/local-web/public/features.css",
+    "apps/local-web/public/index.html",
+    "apps/local-web/public/reliability.css",
+    "apps/local-web/public/template-engine.js",
+    "apps/local-web/server.ts",
+    "apps/local-web/vault.ts",
+    "packages/capture-core/engine.ts",
+    "packages/capture-core/policy.ts",
+    "packages/capture-core/redact.ts",
+    "packages/contracts/capture.schema.json",
+    "packages/contracts/generated.ts",
+    "packages/contracts/validate.ts",
+    "packages/local-store/archive.ts",
+    "packages/local-store/preferences.ts"
+  ]
+}

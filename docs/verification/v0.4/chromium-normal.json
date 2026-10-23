@@ -1,0 +1,23 @@
+{
+  "scope": "Real Chromium rendering + mocked synthetic API; not full-stack E2E",
+  "chromium": "144.0.7559.96",
+  "items": 2000,
+  "lowMemory": false,
+  "cpuThrottle": 4,
+  "pageCards": 40,
+  "coldPageAndSetupMs": 1616.16,
+  "searchMedianMsIncludingDebounce": 436.68,
+  "searchMaxMsIncludingDebounce": 443.47,
+  "JSHeapUsedMiB": 5.44,
+  "chromiumProcessTreeRSSMiB": 562.38,
+  "chromiumIdleCpuPercentOfOneCore": 2.5,
+  "horizontalOverflow": false,
+  "pageErrors": [],
+  "passed": true,
+  "limitations": [
+    "Synthetic in-page API keeps fixture records in renderer memory",
+    "Times include fixed UI debounce and a sampling delay, not solely CPU time",
+    "Chromium process tree excludes separately hosted Node service",
+    "Environment-specific headless sample, not representative Windows/macOS hardware"
+  ]
+}

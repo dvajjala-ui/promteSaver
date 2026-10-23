@@ -1,0 +1,4 @@
+
+> promtesaver@0.4.0 contracts:check
+> node scripts/generate-contracts.mjs --check
+

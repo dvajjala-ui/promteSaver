@@ -1,0 +1,8 @@
+{
+  "scope": "Real unpacked Chromium MV3 worker + real chrome.storage; synthetic message senders. No real-site capture or localhost traffic.",
+  "passed": [],
+  "errors": [
+    "Timeout 8000ms exceeded while waiting for event \"serviceworker\""
+  ],
+  "result": "blocked-or-failed"
+}

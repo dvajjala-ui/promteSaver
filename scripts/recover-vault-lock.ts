@@ -1,0 +1,10 @@
+import { homedir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { recoverStaleVaultLease } from '../apps/local-web/process-lease.ts';
+const args=process.argv.slice(2);
+if(!args.includes('--confirm'))throw new Error('Close all promteSaver windows/services first. Then rerun with --confirm; this never kills a process or changes prompt data.');
+const index=args.indexOf('--data-dir');
+if(index!==-1&&!args[index+1])throw new Error('--data-dir requires a path');
+const directory=resolve(index===-1?join(homedir(),'.promtesaver-local'):args[index+1]!);
+recoverStaleVaultLease(directory);
+console.log('Stale service lease removed. Your vault and key metadata were not changed.');

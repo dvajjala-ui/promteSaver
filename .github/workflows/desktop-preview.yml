@@ -1,0 +1,57 @@
+name: Manual unsigned desktop preview
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Preview only. No public Release, signing secret, deployment or automatic updater.
+jobs:
+  desktop-preview:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.16.0'
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install pinned preview CLI (development tool only)
+        run: cargo install tauri-cli --version 2.11.2 --locked
+      - name: Check source using the intended Node toolchain
+        run: |
+          npm ci --ignore-scripts
+          npm run check
+      - name: Stage, verify and attempt native preview
+        env:
+          # Ad-hoc signing is NOT Apple notarization or a trusted publisher certificate.
+          APPLE_SIGNING_IDENTITY: '-'
+        run: node scripts/build-desktop.mjs --resolve-lockfile
+      - name: Preserve actual dependency resolution and staged manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-build-evidence-${{ matrix.os }}
+          path: |
+            apps/desktop/src-tauri/Cargo.lock
+            apps/desktop/src-tauri/runtime/resource-manifest.json
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Retain successful preview bundles as workflow artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-desktop-preview-${{ matrix.os }}
+          path: |
+            apps/desktop/src-tauri/target/release/bundle/nsis/*.exe
+            apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+          retention-days: 7

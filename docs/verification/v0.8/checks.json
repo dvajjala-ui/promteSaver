@@ -1,0 +1,45 @@
+[
+  {
+    "check": "node-tests",
+    "exitCode": 0,
+    "seconds": 16.441
+  },
+  {
+    "check": "typecheck",
+    "exitCode": 0,
+    "seconds": 2.324
+  },
+  {
+    "check": "contracts",
+    "exitCode": 0,
+    "seconds": 0.037
+  },
+  {
+    "check": "release-metadata",
+    "exitCode": 0,
+    "seconds": 0.042
+  },
+  {
+    "check": "capture-replay",
+    "exitCode": 0,
+    "seconds": 0.192
+  },
+  {
+    "check": "staging-plan",
+    "exitCode": 0,
+    "seconds": 0.045
+  },
+  {
+    "check": "launcher-sh",
+    "exitCode": 0,
+    "seconds": 0.001
+  },
+  {
+    "check": "all-application-js-and-tooling-mjs-syntax",
+    "exitCode": 0
+  },
+  {
+    "check": "workflow-yaml-parse-only-not-CI-execution",
+    "exitCode": 0
+  }
+]
