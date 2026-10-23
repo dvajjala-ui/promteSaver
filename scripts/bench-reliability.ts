@@ -21,6 +21,7 @@ try {
     project:`Project ${i%12}`,tags:[`topic-${i%80}`],notes:`Synthetic fixture ${i}`,pinned:i%50===0});
   const seedMs=performance.now()-start;
   const distinct=Array.from({length:10},(_,i)=>measure(()=>archive.queryLibrary({query:`security cohort${i}`,sort:'relevance',limit:40})));
+  const recall=Array.from({length:10},(_,i)=>measure(()=>archive.recallLibrary(`Review scenario ${i} security latency privacy`,`Project ${i%12}`)));
   // Seed identical-query cache separately. All subsequent samples are explicitly warm.
   archive.queryLibrary({query:'latency rollback',sort:'relevance',limit:40});
   const warm=Array.from({length:20},()=>measure(()=>archive.queryLibrary({query:'latency rollback',sort:'relevance',limit:40})));
@@ -31,8 +32,8 @@ try {
   const facetsColdMs=measure(()=>archive.libraryFacets()),facetsWarmMs=measure(()=>archive.libraryFacets());
   const diskBytes=['','-wal','-shm'].reduce((sum,suffix)=>sum+(existsSync(path+suffix)?statSync(path+suffix).size:0),0);
   console.log(JSON.stringify({version:APP_VERSION,records:count,node:process.version,platform:platform(),architecture:arch(),seedMs:round(seedMs),
-    distinctQueryCacheMiss:summarize(distinct),identicalQueryCacheHit:summarize(warm),deepPageMs:round(deepPageMs),
+    distinctQueryCacheMiss:summarize(distinct),explicitRecall:summarize(recall),identicalQueryCacheHit:summarize(warm),deepPageMs:round(deepPageMs),
     lowMemory:{coldMs:round(lowMemoryColdMs),warm:summarize(lowMemoryWarm)},facets:{coldMs:round(facetsColdMs),warmMs:round(facetsWarmMs)},
     rssMiB:round(process.memoryUsage().rss/1024/1024),heapUsedMiB:round(process.memoryUsage().heapUsed/1024/1024),dbAndWalMiB:round(diskBytes/1024/1024),
-    limitations:['Synthetic data and Linux compatibility runtime only','RSS is a point-in-time Node process measurement, not peak or whole-app memory','Browser and webview memory excluded','Cold full-text search still decrypts/scans O(n) rows','Warm results are keyed cache hits, not a general search-speed guarantee']},null,2));
+    limitations:['Synthetic data on this host only','RSS is a point-in-time Node process measurement, not peak or whole-app memory','Browser and webview memory excluded','Cold full-text search and explicit recall still decrypt/scan O(n) rows','Warm results are keyed cache hits, not a general search-speed guarantee']},null,2));
 }finally{archive.close();rmSync(directory,{recursive:true,force:true});}

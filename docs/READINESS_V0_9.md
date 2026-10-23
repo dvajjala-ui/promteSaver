@@ -14,6 +14,7 @@ The runnable product is a local Node service with a browser UI and an optional u
 | Identify the software/site | Captures include approved browser host only | Native process/window/source adapters; no full URL or conversation title captured |
 | Capture all prompts in all software | Not implemented | Each desktop source needs its own permission-aware adapter and acceptance matrix |
 | Groq summaries and prompt structure | Implemented explicit actions, local key configuration | Real key/model response, network errors, billing and language-quality evaluation |
+| Recover relevant old instructions while drafting | Explicit local keyword recall in the vault editor; reviewed sources can be added to a draft | Real user relevance and time-saved evaluation; no learned reusable blocks or in-place suggestions yet |
 | Automatic AI organization of every capture | Not implemented | Separate consent, job/budget controls and review model; not silently enabled |
 | Suggestions while typing | Small local English hints in opted-in supported composers | Real editor/IME/locale/accessibility and performance tests |
 | Grammarly-like global correction/autocomplete | Not implemented | Native overlay, safe insertion/undo and quality validation |

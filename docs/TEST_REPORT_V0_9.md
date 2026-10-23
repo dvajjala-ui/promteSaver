@@ -2,6 +2,23 @@
 
 Date: 2026-10-23. Tests exercise the actual v0.9 working source. No real user vault or Groq key was used. No native Windows/macOS binary was produced.
 
+## Windows working-branch increment, 2026-10-23
+
+Branch: `codex/contextual-recall`. This section describes subsequent development; the original v0.9 release evidence below remains historical. The increment adds explicit local related-prompt recall in the editor and closes a concurrent bridge-write rate-limit race. All tests used synthetic prompts and temporary vaults.
+
+| Check | Observed result | Scope |
+| --- | --- | --- |
+| `npm run check` with pinned development dependencies | Passed: release metadata, generated contracts, TypeScript 7.0.2, browser JS syntax and 147/147 Node tests | Windows x64, Node 24.18.0 |
+| `python scripts/browser-smoke.py --mode fixture` | 22/22 scenarios passed, including recall and review before adding a source to a draft | Chrome 156.0.8078.47, mocked in-page API |
+| `python scripts/browser-smoke.py --mode live` | 15/15 executed scenarios passed, including recall through real loopback HTTP; one accelerated idle scenario skipped by design | Chrome 156.0.8078.47, real temporary encrypted SQLite vault; no installed extension |
+| `npm run bench:reliability` | 5,000 synthetic items; explicit recall median 255.20 ms, p95 311.11 ms across ten distinct requests; sampled Node RSS 89.5 MiB | Node process only; browser memory and peak usage excluded |
+
+The new Node tests verify local ranking, authorization, lock and deletion behavior, capture-source labeling, and a 16-request concurrency case that admits exactly 15 bridge writes. The browser fixture and live run verify that a user can open the editor, request related sources, reject a source changed after preview, fetch the current full source, add it to the draft, and keep the result unsaved until they act. This is keyword-overlap recall, not learned personal rules or suggestions inside other applications. Both browser runs used local Chrome; they do not establish real ChatGPT/Claude/Gemini capture, installed MV3 worker behavior, a live Groq response, native installers or Mac results. The historical blocked live probe below was on a different environment and is not a current Windows result.
+
+For the Windows browser commands, Python 3.14 required `PYTHONUTF8=1` to read the UTF-8 source. The pinned npm dev dependencies and Python Playwright 1.64.1 were installed for verification; the runtime dependency set did not change. Test screenshots and reports were written to temporary folders rather than committed with vault data.
+
+One `npm run check` attempt ran alongside Chrome fixture QA and finished 146/147: the existing backup-import cancellation test did not observe its brief pending state within its polling window. The same full check passed 147/147 when run on its own. The overlap failure is a timing-sensitive test signal under load, not a demonstrated backup mutation; it remains worth hardening before using concurrent CI runs as a release gate.
+
 ## Executed and passed
 
 | Check | Result | Evidence |

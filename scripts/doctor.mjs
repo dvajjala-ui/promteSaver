@@ -27,7 +27,7 @@ const report = {
   desktopHostSourceIncluded:existsSync(join(root,'apps/desktop/src-tauri/src/main.rs')),
   desktopHostCompiledInThisRelease:false,
   keyEnvelopeFormat:2,
-  browserHelperManualOnly:true,
+  browserHelperUnpackedOnly:true,
   note:'Diagnostic reports environment and repository files only; it does not inspect your prompts or use the network.'
 };
 console.log(JSON.stringify(report,null,2));

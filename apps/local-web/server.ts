@@ -162,13 +162,15 @@ export async function startLocalWeb(options: LocalWebOptions) {
         }
         if (!writerToken || writerOrigin !== req.headers.origin || Date.now() > writerExpiresAt || !authorized(req.headers.authorization, writerToken))
           throw new HttpProblem(401, 'Browser helper is not paired');
-        const now = Date.now();
-        while (bridgeWrites.length && bridgeWrites[0]! < now - 60_000) bridgeWrites.shift();
-        if (bridgeWrites.length >= 15) throw new HttpProblem(429, 'Capture limit reached; retry in a minute');
         const payload = await readBody();
         if (!vault.status().unlocked) throw new HttpProblem(423, 'Vault is locked');
         if (!writerToken || writerOrigin !== req.headers.origin || Date.now() > writerExpiresAt || !authorized(req.headers.authorization, writerToken))
           throw new HttpProblem(401, 'Browser helper is not paired');
+        // Admission and the synchronous archive write must share one event-loop turn.
+        // Checking before readBody lets concurrent slow requests all pass the limit.
+        const now = Date.now();
+        while (bridgeWrites.length && bridgeWrites[0]! < now - 60_000) bridgeWrites.shift();
+        if (bridgeWrites.length >= 15) throw new HttpProblem(429, 'Capture limit reached; retry in a minute');
         if(url.pathname === '/api/bridge/capture') {
           let evidence;
           try { evidence=browserCapture(payload,allowedCaptureHosts); }
@@ -373,6 +375,26 @@ export async function startLocalWeb(options: LocalWebOptions) {
       if (path === '/api/summary' && req.method === 'GET') return json(res, 200, {
         library: archive.libraryStats(), trash: archive.trashCount(), captured: archive.stats().records, network: ai.busy, recording: !!writerToken && Date.now() < writerExpiresAt && allowedCaptureHosts.size>0, autoCaptureHosts:[...allowedCaptureHosts]
       });
+      if (path === '/api/recall' && req.method === 'POST') {
+        const payload = await readBody(30_000);
+        if (Object.keys(payload).some(key => !['text','project','excludeId'].includes(key)) ||
+            typeof payload.text !== 'string' || !payload.text.trim() || payload.text.length > 6000 ||
+            (payload.project !== undefined && (typeof payload.project !== 'string' || payload.project.length > 80)) ||
+            (payload.excludeId !== undefined && (typeof payload.excludeId !== 'string' ||
+              !!payload.excludeId && !/^[a-zA-Z0-9_-]{1,100}$/.test(payload.excludeId))))
+          throw new HttpProblem(400,'Invalid recall request');
+        const matches = archive.recallLibrary(payload.text,payload.project as string | undefined,payload.excludeId as string | undefined);
+        return json(res,200,{matches:matches.map(({item,matchedTerms})=>{
+          const lower=item.body.toLowerCase();
+          const first=Math.min(...matchedTerms.map(term=>lower.indexOf(term)).filter(index=>index>=0));
+          const start=Number.isFinite(first)?Math.max(0,first-60):0;
+          const end=Math.min(item.body.length,start+240);
+          return {id:item.id,etag:libraryETag(item),title:item.title,kind:item.kind,project:item.project,source:item.source ?? '',
+            provenance:item.captureId?'Editable copy of browser snapshot':item.kind==='template'?'Template':'Saved prompt',
+            updatedAt:item.updatedAt,matchedTerms,
+            preview:(start?'…':'')+item.body.slice(start,end)+(end<item.body.length?'…':'')};
+        })});
+      }
       if (path === '/api/items' && req.method === 'GET') {
         const query = url.searchParams.get('q') ?? '';
         const filter = url.searchParams.get('filter') ?? 'all';
@@ -539,7 +561,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const port = requestedPort === undefined ? 0 : Number(requestedPort);
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('Invalid port');
   const app = await startLocalWeb({ directory, port });
-  console.log('\n  promteSaver · Local Vault (manual capture only)');
+  console.log('\n  promteSaver · Local Vault (optional browser companion)');
   console.log(`  Open in your browser: ${app.url}`);
   console.log('  Your data stays on this computer. Press Ctrl+C to stop.\n');
   const shutdown = () => { void app.close().then(() => process.exit(0)); };

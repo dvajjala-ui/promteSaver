@@ -15,6 +15,7 @@ This release adds actual opt-in browser capture source and a Groq transformation
 | Workflow | Implemented source | Verification / limit |
 | --- | --- | --- |
 | Local prompt library | Encrypted payloads, search, projects, tags, templates, history, Trash, draft recovery, backup, writing profiles | Real storage/HTTP tests plus actual Chromium UI fixtures; not Windows/Mac device certified |
+| Related prompt recall | From a draft in the vault editor, click **Find related saved prompts** to see local keyword matches with source context and add a chosen prompt to the draft | Explicit local action; no learned patterns, automatic suggestions or extension read access |
 | Automatic browser capture | Opt-in send-click/Enter snapshots on known ChatGPT, Claude and Gemini composers; source host recorded | Real recorder code tested on synthetic DOM fixtures; real site layouts and installed MV3 extension remain unverified |
 | Inline writing hints | Debounced local checks for repeated words, spaces, punctuation and missing output-format guidance | Limited English heuristics; no AI autocomplete, automatic replacement or system-wide popup |
 | Groq AI | Explicit summary, prompt structuring, improvement and style-guided rewriting | Real request-building/backend tests with mocked provider; no real credential or live provider test here |
@@ -42,7 +43,7 @@ sh ./start-mac.command
 
 Open the private `127.0.0.1` URL printed in the terminal. Keep the terminal running; stop with Ctrl+C. That URL contains a session capability: **never share it or include it in screenshots/support logs**. The default vault is `~/.promtesaver-local` (under your Windows user home too). It is not a public site or LAN/mobile service.
 
-Node 22.16+ is an explicitly warned development-compatibility fallback. Verification here used Linux/Node 22.16.0, not the pinned Node 24/TypeScript toolchain or target operating systems.
+Node 22.16+ is an explicitly warned development-compatibility fallback. The original v0.9 release report used Linux/Node 22.16.0. The current development branch also has Windows/Node 24.18.0 checks; see the test report for the exact scope.
 
 ## Enable the browser companion deliberately
 
@@ -70,6 +71,8 @@ No cloud request happens just because a prompt was captured or someone typed. A 
 - Native compilation, installation, live AI-site layouts, a real Groq response and low-memory Windows/Mac behavior were **not verified**.
 
 These are not 44 live end-to-end tests. See raw outputs and exact reproduction commands in [the test report](docs/TEST_REPORT_V0_9.md).
+
+**Current development branch (`codex/contextual-recall`):** 147/147 Node tests, 22 Chromium fixture scenarios and 15 Chrome-to-real-local-service UI scenarios passed on Windows/Node 24.18.0. The new editor recall action is included in both browser runs. A 5,000-item synthetic run measured 311.11 ms p95 for explicit recall; this is a Node-only sample and relevance has not been user-tested. The installed extension and native app gates remain open.
 
 ## Resource choices and observed limits
 

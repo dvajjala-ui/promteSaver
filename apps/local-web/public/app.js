@@ -24,7 +24,7 @@ import { initAssistant } from './assistant.js';
   let section = 'all'; let pageOffset = 0; let total = 0;
   let currentItems = []; let editingId = null; let initialized = false;
   let wbItem=null,wbRequest=0,wbLayout='cards',wbVisible=true,wbFocus=false;
-  let searchTimer; let queryCounter = 0; let quickCounter = 0; let toastTimer;
+  let searchTimer; let queryCounter = 0; let quickCounter = 0; let recallRequest = 0; let toastTimer;
   let quickItems = []; let quickIndex = 0; let templateItem = null;
   let templateFields = []; let backupMode = 'export'; let importFile = null;
   let sessionEpoch = 0; let uiUnlocked = false; let deadlineTimer; let statusTimer;
@@ -207,6 +207,7 @@ import { initAssistant } from './assistant.js';
   const assistant=initAssistant({api,notice,unlocked:()=>uiUnlocked,refresh,settings:()=>chooseSection('settings')});
   function showGate(locked) {
     assistant.reset();
+    resetRecall();
     answerDialog(false);
     uiUnlocked = false; sessionEpoch++; queryCounter++; quickCounter++;
     runtimeReport=null;$('healthExport').disabled=true;
@@ -510,6 +511,7 @@ import { initAssistant } from './assistant.js';
     $('entryPinned').checked = item?.pinned || false;
     $('entryNotes').value = item?.notes || ''; $('entrySource').value = item?.source || '';
     if ($('quickDialog').open) $('quickDialog').close();
+    resetRecall();
     $('draftStatus').textContent='Recovery is encrypted locally after 1.3 seconds without typing.';
     editorInitial=editorFingerprint(); $('editorDialog').showModal(); $('entryTitle').focus();
   }
@@ -518,10 +520,60 @@ import { initAssistant } from './assistant.js';
   async function closeEditor(force = false) {
     if (!force && editorDirty() && !(await ask('Discard your unsaved editor changes and any encrypted recovery copy?'))) return;
     const discardedId=activeDraftId; activeDraftId=null;clearTimeout(draftTimer);
+    resetRecall();
     $('draftStatus').textContent='';
     $('editorDialog').close(); editingId=null; editingETag=undefined; editorInitial='';
     if(discardedId)void dropDraft(discardedId);
     for(const id of ['entryTitle','entryBody','entryProject','entryTags','entryNotes','entrySource'])$(id).value='';
+  }
+  function resetRecall() {
+    recallRequest++;
+    $('recallPanel').hidden=true;
+    $('recallStatus').textContent='';
+    $('recallResults').replaceChildren();
+    $('findRelated').disabled=false;
+  }
+  async function findRelated() {
+    if (!uiUnlocked || !$('editorDialog').open) return;
+    const text=($('entryTitle').value+'\n'+$('entryBody').value).trim().slice(0,6000);
+    if (text.length<3) {notice('Write a task or prompt first, then search your vault.');return;}
+    const request=++recallRequest,epoch=sessionEpoch;
+    $('recallPanel').hidden=false;$('recallResults').replaceChildren();
+    $('recallStatus').textContent='Searching saved prompts on this device…';
+    $('findRelated').disabled=true;
+    try {
+      const result=await api('/api/recall','POST',{text,project:$('entryProject').value,excludeId:editingId||''});
+      if(request!==recallRequest||epoch!==sessionEpoch||!uiUnlocked||!$('editorDialog').open)return;
+      $('recallStatus').textContent=result.matches.length ? 'Related sources from your vault. Review before adding anything.' :
+        'No related saved prompts found. Try more specific words or save this as your first example.';
+      for(const match of result.matches) {
+        const row=node('article','recall-result');
+        const detail=node('div','recall-result-detail');
+        detail.append(node('strong','',match.title));
+        detail.append(node('small','',`${match.provenance} · ${match.project||'Unassigned'} · ${match.source||'Manual'} · ${localDate(match.updatedAt)}`));
+        detail.append(node('p','',match.preview));
+        detail.append(node('small','',`Matched: ${match.matchedTerms.join(', ')}`));
+        const addButton=button('Add to draft','Add this saved prompt to the current draft',async()=>{
+          if(addButton.disabled)return;
+          addButton.disabled=true;
+          const selected=recallRequest,selectionEpoch=sessionEpoch;
+          try {
+            const {item}=await api(`/api/items/${match.id}`);
+            if(selected!==recallRequest||selectionEpoch!==sessionEpoch||!uiUnlocked||!$('editorDialog').open)return;
+            if(item.deletedAt||item.etag!==match.etag){resetRecall();notice('That saved prompt changed. Search again before adding it.');return;}
+            const body=$('entryBody').value;
+            const combined=body.trim() ? body.trimEnd()+'\n\n'+item.body : item.body;
+            if(combined.length>100000){notice('This draft would exceed the 100,000-character limit. Copy a shorter part instead.');return;}
+            $('entryBody').value=combined;resetRecall();scheduleDraft();$('entryBody').focus();
+            notice('Saved text added to your draft for review. Nothing was submitted.');
+          }catch(error){if(uiUnlocked)notice(error.message);}
+          finally{addButton.disabled=false;}
+        },'btn outline');
+        row.append(detail,addButton);
+        $('recallResults').append(row);
+      }
+    }catch(error){if(request===recallRequest&&uiUnlocked)$('recallStatus').textContent=error.message;}
+    finally{if(request===recallRequest)$('findRelated').disabled=false;}
   }
   async function duplicateItem(item) {
     try { await api(`/api/items/${item.id}/duplicate`, 'POST', {}); await refresh(); notice('Copy saved to your library.'); }
@@ -966,8 +1018,9 @@ import { initAssistant } from './assistant.js';
     $('bulkClear').addEventListener('click',()=>{selected.clear();renderItems();});
     $('previousPage').addEventListener('click',()=>void loadItems('previous'));
     $('editorDialog').addEventListener('cancel',event=>{event.preventDefault();closeEditor();});
-    $('editorForm').addEventListener('input',scheduleDraft);
+    $('editorForm').addEventListener('input',event=>{if(['entryTitle','entryBody','entryProject'].includes(event.target.id))resetRecall();scheduleDraft();});
     $('editorForm').addEventListener('change',scheduleDraft);
+    $('findRelated').addEventListener('click',()=>void findRelated());
     window.addEventListener('beforeunload',event=>{if(editorDirty()){event.preventDefault();event.returnValue='';}});
     $('saveDraftAsNew').addEventListener('click',()=>{editingId=null;editingETag=undefined;$('modalTitle').textContent='Save draft as a new prompt';$('editorError').textContent='';$('saveDraftAsNew').hidden=true;});
     $('backupPassphrase').addEventListener('input',resetBackupReview);
@@ -1060,7 +1113,7 @@ import { initAssistant } from './assistant.js';
       try { const content = await navigator.clipboard.readText();
         if(epoch!==sessionEpoch || !uiUnlocked)return;
         if (content.length > 100000) {notice('Clipboard text exceeds 100,000 characters.');return;}
-        $('entryBody').value = content;scheduleDraft();notice('Clipboard text loaded for review. Nothing has been saved yet.');
+        $('entryBody').value = content;resetRecall();scheduleDraft();notice('Clipboard text loaded for review. Nothing has been saved yet.');
       } catch {notice('Clipboard access unavailable. Paste normally with Ctrl / Cmd + V.');}
     });
     $('exportBackup').addEventListener('click',() => openBackup('export'));

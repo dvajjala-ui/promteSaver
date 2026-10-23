@@ -52,8 +52,8 @@ def main():
             def passed(name): report['passed'].append(name); print('PASS', name)
             def cards(): return page.locator('.item-card')
             def card(title): return cards().filter(has=page.get_by_role('heading', name=title, exact=True)).first
-            def invoke(path, method='GET', payload=None):
-                return page.evaluate('''async ({path,method,payload})=>{const response=await fetch(path,{method,headers:{Authorization:'Bearer '+sessionStorage.getItem('promtesaver.session'),...(payload===null?{}:{'Content-Type':'application/json'})},...(payload===null?{}:{body:JSON.stringify(payload)})});if(!response.ok)throw Error('Test request failed: '+response.status);return response.json();}''', {'path':path,'method':method,'payload':payload})
+            def invoke(path, method='GET', payload=None, etag=None):
+                return page.evaluate('''async ({path,method,payload,etag})=>{const response=await fetch(path,{method,headers:{Authorization:'Bearer '+sessionStorage.getItem('promtesaver.session'),...(payload===null?{}:{'Content-Type':'application/json'}),...(etag?{'If-Match':etag}:{})},...(payload===null?{}:{body:JSON.stringify(payload)})});if(!response.ok)throw Error('Test request failed: '+response.status);return response.json();}''', {'path':path,'method':method,'payload':payload,'etag':etag})
             def unlock(password=PASSWORD):
                 page.fill('#passphrase', password);page.click('#gateAction');expect(page.locator('#shell')).to_be_visible()
             def new_item(title, body, kind='prompt'):
@@ -205,7 +205,11 @@ def main():
             card('Browser lifecycle canary').get_by_role('button',name='Edit saved prompt').click()
             page.fill('#entryBody', 'My unsaved draft must survive a conflict.')
             saved = invoke('/api/items?q=Browser%20lifecycle')['items'][0]
-            invoke('/api/items/'+saved['id'], 'PUT', {**saved, 'body':'A parallel edit from a different window.'})
+            invoke('/api/items/'+saved['id'], 'PUT', {
+                'title':saved['title'],'body':'A parallel edit from a different window.',
+                'kind':saved['kind'],'project':saved['project'],'tags':saved['tags'],
+                'pinned':saved['pinned'],'notes':saved.get('notes',''),'source':saved.get('source','')
+            }, saved['etag'])
             page.click('#saveEntry');expect(page.locator('#saveDraftAsNew')).to_be_visible()
             assert page.input_value('#entryBody') == 'My unsaved draft must survive a conflict.'
             page.click('#saveDraftAsNew');page.fill('#entryTitle','Recovered browser draft');page.click('#saveEntry')
@@ -310,6 +314,34 @@ def main():
                 page.set_viewport_size({'width':1440,'height':960})
                 page.locator('#mainNav [data-filter="all"]').click()
             passed('Desktop/mobile responsive layout and screenshots')
+
+            # Explicit local recall uses the current editor draft and preserves user control.
+            page.locator('#mainNav [data-filter="all"]').click()
+            source=invoke('/api/items','POST',{'title':'Synthetic React authentication source',
+                'body':'Review React authentication flow and preserve existing tests',
+                'project':'Recall QA','source':'Manual'})['item']
+            page.click('#newButton')
+            page.fill('#entryTitle','Improve React authentication')
+            page.fill('#entryBody','Review React auth flow with tests')
+            page.fill('#entryProject','Recall QA')
+            page.click('#findRelated')
+            expect(page.locator('#recallPanel')).to_be_visible()
+            expect(page.locator('#recallResults')).to_contain_text('Synthetic React authentication source')
+            invoke('/api/items/'+source['id'],'PUT',{
+                'title':source['title'],'body':'Review React authentication flow and preserve updated tests',
+                'kind':source['kind'],'project':source['project'],'tags':source['tags'],
+                'pinned':source['pinned'],'notes':source.get('notes',''),'source':source.get('source','')
+            },source['etag'])
+            page.locator('.recall-result').filter(has_text='Synthetic React authentication source').get_by_role('button',name='Add this saved prompt to the current draft').click()
+            expect(page.locator('#entryBody')).to_have_value('Review React auth flow with tests')
+            expect(page.locator('#recallPanel')).not_to_be_visible()
+            page.click('#findRelated')
+            page.locator('.recall-result').filter(has_text='Synthetic React authentication source').get_by_role('button',name='Add this saved prompt to the current draft').click()
+            expect(page.locator('#entryBody')).to_have_value(re.compile('preserve updated tests'))
+            expect(page.locator('#recallPanel')).not_to_be_visible()
+            page.click('#cancelDialog');page.click('#actionAccept')
+            expect(page.locator('#editorDialog')).not_to_be_visible()
+            passed('Explicit vault recall adds a reviewed source to the draft and clears results')
 
             page.locator('#mainNav [data-filter="all"]').click();expect(cards()).to_have_count(20)
             if args.mode=='fixture':
