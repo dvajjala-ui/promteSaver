@@ -29,6 +29,8 @@ The earlier intermittent backup-import cancellation test failed again under the 
 
 The companion popup now checks the current site's optional permission and explains when it is required before enabling capture. It reuses an existing grant without reopening the browser prompt. The actual Chromium core fixture passed with the initial permission-required state and the existing pair/enable/pause flow. Evidence: `verification/windows-2026-10-23/core-browser/report.json` and its synthetic screenshots. This remains a fixture result; the real consent prompt and site layouts still need a human pilot.
 
+After the popup change, the real Windows local-browser smoke run passed **15/15 executed scenarios** against a temporary encrypted vault and local HTTP service. It covered setup, diagnostics, responsive views, conflict handling, templates, pagination, backup restore, passphrase changes, recall, and lock-time DOM clearing. One accelerated idle scenario remains intentionally fixture-only. Evidence: `verification/windows-2026-10-23/browser-live/report.json` and synthetic screenshots. This still does not exercise real third-party AI sites or the installed extension.
+
 ## Executed and passed
 
 | Check | Result | Evidence |
