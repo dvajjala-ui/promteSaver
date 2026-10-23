@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { request } from 'node:http';
 import { mkdtempSync,rmSync,readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -28,6 +29,30 @@ async function fixture(options:Partial<LocalWebOptions>={}) {
 async function approved(f:Awaited<ReturnType<typeof fixture>>,payload:Record<string,unknown>){return {...payload,consent:true,reviewDigest:(await f.call('/api/ai/preview','POST',payload)).body.reviewDigest};}
 function event(text='A synthetic browser prompt') {return {eventId:randomUUID(),host:'chatgpt.com',text,recordedAt:new Date().toISOString(),signal:'send-click'};}
 const ok=()=>new Response(JSON.stringify({choices:[{message:{content:'A reviewed synthetic draft'},finish_reason:'stop'}]}));
+
+test('explicit local recall ranks saved sources and excludes the current or deleted item',async()=>{
+  const f=await fixture();
+  try {
+    const best=(await f.call('/api/items','POST',{title:'Review React authentication',body:'Inspect existing login flow and preserve working tests',project:'Client',source:'Manual',tags:['react','auth']})).body.item;
+    await f.call('/api/items','POST',{title:'Meeting follow-up',body:'Summarize attendees and decisions',project:'Operations'});
+    const other=(await f.call('/api/items','POST',{title:'React component cleanup',body:'Review component styles and accessibility',project:'Client'})).body.item;
+    const input={text:'Review React auth login flow and existing tests',project:'Client'};
+    const found=await f.call('/api/recall','POST',input);
+    assert.equal(found.status,200);assert.equal(found.body.matches[0].id,best.id);
+    assert.equal(found.body.matches[0].etag,best.etag);
+    assert.ok(found.body.matches[0].matchedTerms.includes('react'));
+    assert.equal(found.body.matches.some((match:{id:string})=>match.id===other.id),true);
+    assert.equal(found.body.matches.some((match:{title:string})=>match.title==='Meeting follow-up'),false);
+    assert.equal((await f.call('/api/recall','POST',{...input,excludeId:best.id})).body.matches[0].id,other.id);
+    assert.equal((await f.call('/api/recall','POST',input,'invalid')).status,401);
+    assert.equal(f.app.vault.archive.getLibrary(best.id)?.useCount,0);
+    assert.equal((await f.call('/api/recall','POST',{text:'x'.repeat(6001)})).status,400);
+    f.app.vault.archive.deleteLibrary(best.id);
+    assert.equal((await f.call('/api/recall','POST',input)).body.matches.some((match:{id:string})=>match.id===best.id),false);
+    await f.call('/api/lock','POST',{});
+    assert.equal((await f.call('/api/recall','POST',input)).status,423);
+  }finally{await f.cleanup();}
+});
 
 test('Groq key syntax and raw token redaction; no arbitrary provider endpoint',()=>{
   assert.deepEqual(validateAISettings(config),config);
@@ -118,8 +143,39 @@ test('automatic capture requires independent pairing consent, is idempotent, red
     const first=await f.call('/api/bridge/capture','POST',e,bridge.writeToken,EXT);assert.equal(first.status,201);assert.equal(first.body.redactions,1);
     assert.equal((await f.call('/api/bridge/capture','POST',e,bridge.writeToken,EXT)).body.saved,false);
     assert.equal(f.app.vault.archive.stats().records,1);const items=f.app.vault.archive.listLibrary();assert.equal(items.length,1);assert.ok(!items[0]!.body.includes(KEY));assert.equal(items[0]!.captureId,e.eventId);
+    const recalled=await f.call('/api/recall','POST',{text:'Capture safe request'});
+    assert.equal(recalled.body.matches[0].provenance,'Editable copy of browser snapshot');
     assert.equal(aiCalls,0);assert.equal((await f.call('/api/ai/settings','GET',undefined,bridge.writeToken,EXT)).status,403);
     await f.call('/api/lock','POST',{});assert.equal((await f.call('/api/bridge/capture','POST',event(),bridge.writeToken,EXT)).status,423);
+  }finally{await f.cleanup();}
+});
+test('concurrent bridge writes obey the fifteen-per-minute service limit',async()=>{
+  const f=await fixture();
+  try {
+    const code=(await f.call('/api/bridge/start','POST',{autoCaptureHosts:['chatgpt.com']})).body.pairingCode.split(':')[2];
+    const bridge=(await f.call('/api/bridge/pair','POST',{code},'',EXT)).body;
+    const pending:Array<()=>void>=[];
+    const calls=Array.from({length:16},(_,i)=>{
+      const body=JSON.stringify(event(`Synthetic parallel capture ${i}`));
+      let connected!:()=>void;
+      const opened=new Promise<void>(resolve=>{connected=resolve;});
+      const response=new Promise<number>((resolve,reject)=>{
+        const req=request(f.app.origin+'/api/bridge/capture',{method:'POST',headers:{
+          Origin:EXT,Authorization:`Bearer ${bridge.writeToken}`,'Content-Type':'application/json',
+          'Content-Length':Buffer.byteLength(body)
+        }},res=>{res.resume();res.on('end',()=>resolve(res.statusCode ?? 0));});
+        req.on('error',reject);
+        req.once('socket',socket=>{if(socket.connecting)socket.once('connect',connected);else connected();});
+        req.flushHeaders();pending.push(()=>req.end(body));
+      });
+      return {opened,response};
+    });
+    await Promise.all(calls.map(call=>call.opened));
+    pending.forEach(send=>send());
+    const statuses=await Promise.all(calls.map(call=>call.response));
+    assert.equal(statuses.filter(status=>status===201).length,15);
+    assert.equal(statuses.filter(status=>status===429).length,1);
+    assert.equal(f.app.vault.archive.stats().records,15);
   }finally{await f.cleanup();}
 });
 test('immutable capture stays unchanged by editing its library copy; permanent deletion preserves tombstone on restore',()=>{

@@ -104,6 +104,16 @@
       }
     }
     if(path==='/api/summary'){const active=state.items.filter(i=>!i.deletedAt);return respond({library:{all:active.length,pinned:active.filter(i=>i.pinned).length,templates:active.filter(i=>i.kind==='template').length},trash:state.items.filter(i=>i.deletedAt).length,captured:{records:0,pending:0,tombstones:0}});}
+    if(path==='/api/recall'&&method==='POST'){
+      const terms=[...new Set((payload.text||'').toLowerCase().match(/[a-z]{3,}/g)||[])];
+      const matches=state.items.filter(item=>!item.deletedAt&&item.id!==payload.excludeId).map(item=>{
+        const hay=[item.title,item.body,item.project,item.tags.join(' ')].join(' ').toLowerCase();
+        return {id:item.id,etag:item.etag,title:item.title,kind:item.kind,project:item.project,source:item.source,
+          provenance:item.kind==='template'?'Template':'Saved prompt',
+          updatedAt:item.updatedAt,matchedTerms:terms.filter(term=>hay.includes(term)),preview:item.body.slice(0,240)};
+      }).filter(item=>item.matchedTerms.length).slice(0,5);
+      return respond({matches});
+    }
     if(path==='/api/facets'){const names=key=>[...new Set(state.items.filter(i=>!i.deletedAt).flatMap(i=>key==='tags'?i.tags:[i.project]).filter(Boolean))].map(name=>({name,count:state.items.filter(i=>!i.deletedAt&&(key==='tags'?i.tags.includes(name):i.project===name)).length}));return respond({projects:names('project'),tags:names('tags')});}
     if(path==='/api/bridge/status')return respond({active:false,expiresAt:null});
     if(path==='/api/bridge/start')return respond({pairingCode:'psv2:12345:'+'c'.repeat(64)});

@@ -13,6 +13,9 @@ flowchart LR
   HTTP --> Tx[Transaction]
   Tx --> Evidence[Immutable redacted snapshot]
   Tx --> Library[Editable Browser inbox copy]
+  TaskDraft[Vault editor draft] -->|explicit Find related| Recall[Local keyword recall]
+  Library --> Recall
+  Recall -->|chosen full source, reviewed| TaskDraft
   Library --> Preview[Explicit local AI preview]
   Profile[User writing preferences, no samples] --> Preview
   Preview -->|fresh approval digest + consent| Runner[One bounded Groq request]
@@ -37,6 +40,7 @@ flowchart LR
 - AI: one active request, max six/minute, 12 s deadline, <=12k source chars, <=20k style chars, <=96k provider bytes, <=32k returned chars, max 1200 completion tokens. No production SDK dependency.
 - Lock/settings changes abort provider request and invalidate stale output. Native work or bytes already received by a remote provider cannot be undone. JavaScript strings/OS memory are not guaranteed zeroized.
 - Existing bounded pagination, preview hydration, caches and async password work retained. New searches still decrypt/scan the archive. No overall memory-reduction claim.
+- Explicit recall accepts at most 6,000 characters from the vault editor, scans decrypted saved entries only while unlocked, and returns at most five source previews. A selected source is fetched in full and its ETag rechecked before it can be added to the unsaved draft. It never grants the browser companion read access or runs a model; relevance is keyword overlap, not learned preference inference.
 
 ## Storage and compatibility
 

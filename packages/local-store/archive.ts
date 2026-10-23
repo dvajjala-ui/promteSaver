@@ -75,6 +75,7 @@ export interface LibraryQuery {
   offset?: number;
 }
 export interface LibraryPage { items: LibraryEntry[]; total: number; limit: number; offset: number; }
+export interface RecallMatch { item: LibraryEntry; matchedTerms: string[]; score: number; }
 /** A user-approved style profile. Analysis samples are never kept apart from reviewed excerpts. */
 export interface SavedStyle {
   id: string;
@@ -514,6 +515,43 @@ export class EncryptedArchive {
   }
   listLibrary(query = '', filter: LibraryFilter = 'all', limit = 100): LibraryEntry[] {
     return this.queryLibrary({ query, filter, limit }).items;
+  }
+  /** Explicit local recall from a current task. Returns sources, never inferred instructions. */
+  recallLibrary(text: string, project = '', excludeId = ''): RecallMatch[] {
+    this.#ensureOpen(); this.#checkExternalWrites();
+    if (typeof text !== 'string' || !text.trim() || text.length > 6000 ||
+        typeof project !== 'string' || project.length > 80 ||
+        typeof excludeId !== 'string' || (excludeId && !/^[a-zA-Z0-9_-]{1,100}$/.test(excludeId)))
+      throw new Error('Invalid recall request');
+    const normalize = (value: string) => value.normalize('NFKC').toLowerCase();
+    const common = new Set(['about','after','again','also','another','before','could','from','have','into','need','only','please','prompt','project','should','some','that','them','there','these','this','using','want','what','when','where','which','with','would','your']);
+    const terms = [...new Set(normalize(text).match(/[\p{L}\p{N}]{3,}/gu) ?? [])]
+      .filter(term => !common.has(term)).slice(0,12);
+    if (!terms.length) return [];
+    const preferredProject = normalize(project.trim());
+    const compare = (a: RecallMatch, b: RecallMatch) => b.score - a.score ||
+      b.item.updatedAt.localeCompare(a.item.updatedAt) || a.item.id.localeCompare(b.item.id);
+    const best = new BoundedTopK<RecallMatch>(5, compare);
+    for (const row of this.#db.prepare('SELECT id,payload FROM library WHERE deleted_at IS NULL').iterate()) {
+      const id = row.id as string;
+      if (id === excludeId) continue;
+      const item = this.#decodeLibrary(id, row.payload as Uint8Array);
+      const title = normalize(item.title), tags = normalize(item.tags.join(' '));
+      const itemProject = normalize(item.project), notes = normalize(item.notes ?? '');
+      const body = normalize(item.body);
+      let score = 0; const matchedTerms: string[] = [];
+      for (const term of terms) {
+        const weight = (title.includes(term) ? 8 : 0) + (tags.includes(term) ? 6 : 0) +
+          (itemProject.includes(term) ? 4 : 0) + (notes.includes(term) ? 3 : 0) +
+          (body.includes(term) ? 1 : 0);
+        if (weight) { score += weight; matchedTerms.push(term); }
+      }
+      if (matchedTerms.length < (terms.length >= 4 ? 2 : 1)) continue;
+      if (preferredProject && itemProject === preferredProject) score += 7;
+      if (item.pinned) score += 2;
+      best.add({item,matchedTerms,score});
+    }
+    return best.sorted();
   }
   /** Plaintext query is evaluated only while unlocked; no plaintext FTS table is persisted. */
   queryLibrary(input: LibraryQuery = {}): LibraryPage {

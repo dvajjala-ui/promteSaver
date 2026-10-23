@@ -16,7 +16,7 @@ Date: 2026-10-23. Built from the uploaded v0.8 source. This release changes core
 
 ## Evidence
 
-145 Node tests passed. 21 baseline and 22 new Chromium fixture scenarios passed. Syntax/type/contract/version checks passed with the available development toolchain. Full details, failure limitations and reproduction commands: [TEST_REPORT_V0_9.md](TEST_REPORT_V0_9.md).
+145 Node tests passed. 21 baseline and 23 new Chromium fixture scenarios passed. Syntax/type/contract/version checks passed with the available development toolchain. Full details, failure limitations and reproduction commands: [TEST_REPORT_V0_9.md](TEST_REPORT_V0_9.md).
 
 ## Not shipped or proven
 

@@ -2,6 +2,35 @@
 
 Date: 2026-10-23. Tests exercise the actual v0.9 working source. No real user vault or Groq key was used. No native Windows/macOS binary was produced.
 
+## Windows working-branch increment, 2026-10-23
+
+Branch: `codex/contextual-recall`. This section describes subsequent development; the original v0.9 release evidence below remains historical. The increment adds explicit local related-prompt recall in the editor and closes a concurrent bridge-write rate-limit race. All tests used synthetic prompts and temporary vaults.
+
+| Check | Observed result | Scope |
+| --- | --- | --- |
+| `npm run check` with pinned development dependencies | Passed: release metadata, generated contracts, TypeScript 7.0.2, browser JS syntax and 147/147 Node tests | Windows x64, Node 24.18.0 |
+| `python scripts/browser-smoke.py --mode fixture` | 22/22 scenarios passed, including recall and review before adding a source to a draft | Chrome 156.0.8078.47, mocked in-page API |
+| `python scripts/browser-smoke.py --mode live` | 15/15 executed scenarios passed, including recall through real loopback HTTP; one accelerated idle scenario skipped by design | Chrome 156.0.8078.47, real temporary encrypted SQLite vault; no installed extension |
+| `npm run bench:reliability` | 5,000 synthetic items; explicit recall median 255.20 ms, p95 311.11 ms across ten distinct requests; sampled Node RSS 89.5 MiB | Node process only; browser memory and peak usage excluded |
+
+The new Node tests verify local ranking, authorization, lock and deletion behavior, capture-source labeling, and a 16-request concurrency case that admits exactly 15 bridge writes. The browser fixture and live run verify that a user can open the editor, request related sources, reject a source changed after preview, fetch the current full source, add it to the draft, and keep the result unsaved until they act. This is keyword-overlap recall, not learned personal rules or suggestions inside other applications. Both browser runs used local Chrome; they do not establish real ChatGPT/Claude/Gemini capture, installed MV3 worker behavior, a live Groq response, native installers or Mac results. The historical blocked live probe below was on a different environment and is not a current Windows result.
+
+For the Windows browser commands, Python 3.14 required `PYTHONUTF8=1` to read the UTF-8 source. The pinned npm dev dependencies and Python Playwright 1.64.1 were installed for verification; the runtime dependency set did not change. Test screenshots and reports were written to temporary folders rather than committed with vault data.
+
+One `npm run check` attempt ran alongside Chrome fixture QA and finished 146/147: the existing backup-import cancellation test did not observe its brief pending state within its polling window. The same full check passed 147/147 when run on its own. The overlap failure was a timing-sensitive test signal under load, not a demonstrated backup mutation; the release-pilot increment below replaces that timing-dependent setup.
+
+## Windows release-pilot increment, 2026-10-23
+
+Branch: `codex/release-pilot`. The unpacked MV3 probe now launches full Playwright Chromium 156.0.8078.4 instead of Chrome Headless Shell, which cannot load extensions. With a fresh temporary browser profile, **7/7 scoped checks passed**: actual worker startup/manifest, trusted Chrome storage, default-off state, sender rejection, pairing revocation, no token disclosure to content state, and no injection on a synthetic approved-origin page before optional permission. Evidence: `verification/windows-2026-10-23/extension-worker.json`. This uses synthetic senders inside the real worker and an intercepted synthetic page. Headless Chromium did not resolve the optional host-permission prompt during an attempted grant; consented content-script injection, the popup pairing flow, real site layouts, and localhost capture remain unverified. No site permission was bypassed.
+
+An isolated Rust 1.99.1 toolchain generated `apps/desktop/src-tauri/Cargo.lock` with the real Cargo resolver. `cargo metadata --locked` reported 432 packages including the local app, all external packages from crates.io, and no blank external license expressions. Two `r-efi` versions list permissive MIT/Apache alternatives alongside LGPL; this metadata check is not a full source/license/security audit. `cargo check --locked` failed on this machine because the Windows SDK import library `kernel32.lib` is missing, even when run under Visual Studio Build Tools 18's environment. No Rust host tests, native binary, installer, signing, or on-device resource measurements passed. The lockfile is a development resolution, not release approval.
+
+The earlier intermittent backup-import cancellation test failed again under the full suite. Its old 100-poll window could miss request startup, and a completed request could beat the separate lock call. The test now sends HTTP headers while holding the body open, observes the active secure operation, locks the vault, then completes the upload. This deterministically tests the post-await session boundary. After that test change, `node --test tests/async-security.test.ts` passed 15/15 and `npm run check` passed 147/147 with release, contract, TypeScript, and browser syntax checks. `npm run doctor` and `npm run desktop:plan` passed; the doctor still reports no native installer. This does not prove all backup cancellation races on a real device.
+
+The companion popup now checks the current site's optional permission and explains when it is required before enabling capture. It reuses an existing grant without reopening the browser prompt. The actual Chromium core fixture passed with the initial permission-required state and the existing pair/enable/pause flow. Evidence: `verification/windows-2026-10-23/core-browser/report.json` and its synthetic screenshots. This remains a fixture result; the real consent prompt and site layouts still need a human pilot.
+
+After the popup change, the real Windows local-browser smoke run passed **15/15 executed scenarios** against a temporary encrypted vault and local HTTP service. It covered setup, diagnostics, responsive views, conflict handling, templates, pagination, backup restore, passphrase changes, recall, and lock-time DOM clearing. One accelerated idle scenario remains intentionally fixture-only. Evidence: `verification/windows-2026-10-23/browser-live/report.json` and synthetic screenshots. This still does not exercise real third-party AI sites or the installed extension.
+
 ## Executed and passed
 
 | Check | Result | Evidence |

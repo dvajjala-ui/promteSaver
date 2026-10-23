@@ -1,6 +1,6 @@
 # Current status: v0.9 developer pilot
 
-See [READINESS_V0_9.md](READINESS_V0_9.md) and [TEST_REPORT_V0_9.md](TEST_REPORT_V0_9.md) for current evidence. Browser capture and explicit Groq source now exist, but live/native gates remain open. The v0.8 matrix below is retained as historical context, not a current claim that all AI is absent.
+See [READINESS_V0_9.md](READINESS_V0_9.md) and [TEST_REPORT_V0_9.md](TEST_REPORT_V0_9.md) for current evidence. Browser capture and explicit Groq source now exist. A real unpacked Chromium worker passed scoped default-off checks on Windows, while consented site capture remains unverified; native compilation is blocked by the missing Windows SDK library on this machine. The v0.8 matrix below is retained as historical context, not a current claim that all AI is absent.
 
 # Readiness gates - 0.8
 

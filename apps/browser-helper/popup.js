@@ -121,18 +121,24 @@ $('saveToVault').addEventListener('click', async () => {
 });
 void showBridge();
 
-let autoHost=null;
+let autoHost=null,sitePermission=false;
 async function currentSite(){
   const [tab]=await chrome.tabs.query({active:true,currentWindow:true});
   try{const url=new URL(tab.url);autoHost=url.protocol==='https:'&&['chatgpt.com','claude.ai','gemini.google.com'].includes(url.hostname)&&!tab.incognito?url.hostname:null;}catch{autoHost=null;}
   $('siteName').textContent=autoHost||'Open ChatGPT, Claude or Gemini in a normal tab';
   $('enableSite').disabled=!autoHost;$('pauseSite').disabled=!autoHost;
-  if(autoHost){const state=await chrome.runtime.sendMessage({type:'STATE',host:autoHost});$('siteState').textContent=state.enabled?(state.canCapture?'Site enabled; vault paired.':'Site enabled; capture needs vault pairing.'):'Off for this site';$('siteHints').checked=!!state.hints;}
+  sitePermission=false;
+  if(autoHost){
+    try{sitePermission=await chrome.permissions.contains({origins:[`https://${autoHost}/*`]});}catch{sitePermission=false;}
+    const state=await chrome.runtime.sendMessage({type:'STATE',host:autoHost});
+    $('siteState').textContent=!sitePermission?'Site permission required; click Enable for this site.':state.enabled?(state.canCapture?'Site enabled; vault paired.':'Site enabled; capture needs vault pairing.'):'Off for this site';
+    $('siteHints').checked=!!state.hints;
+  }
 }
 $('enableSite').addEventListener('click',async()=>{
   if(!autoHost)return;
   try{
-    const granted=await chrome.permissions.request({origins:[`https://${autoHost}/*`]});
+    const granted=sitePermission||await chrome.permissions.request({origins:[`https://${autoHost}/*`]});
     if(!granted){note('No site permission granted; capture stays off.');return;}
     const result=await chrome.runtime.sendMessage({type:'SET_SITE',host:autoHost,enabled:true,hints:$('siteHints').checked});
     if(!result.ok)throw Error(result.error);

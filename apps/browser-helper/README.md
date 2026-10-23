@@ -6,7 +6,7 @@ Read the [complete pilot guide](../../docs/PILOT_GUIDE_V0_9.md) first. Load this
 
 Auto hosts: `chatgpt.com`, `claude.ai`, `gemini.google.com`. Host access is optional and requested only when enabling that site. Dynamic scripts are top-frame only. Incognito is disallowed. Recognized private/temporary/protected fields are excluded on a best-effort basis; do not trust untested site modes with private data.
 
-The visible panel shows site status, failures and Pause. Send/Enter produces a **draft snapshot**, not delivery proof. Modifier/IME/synthetic keyboard events are excluded. Source host only; no conversation URL/title/history or account identifiers. Hints check limited English patterns after a 900 ms pause; they never edit text or call Groq.
+The popup shows whether the current site still needs optional permission before capture can be enabled, then reuses an existing grant on later opens. The visible page panel shows site status, failures and Pause. Send/Enter produces a **draft snapshot**, not delivery proof. Modifier/IME/synthetic keyboard events are excluded. Source host only; no conversation URL/title/history or account identifiers. Hints check limited English patterns after a 900 ms pause; they never edit text or call Groq.
 
 The service worker derives the host from its sender, uses a trusted-context-only session token, forwards only bounded events to loopback and never persists raw text. It has no plaintext queue, retries or polling. Maximum two requests, four-second deadlines, bounded response bodies. Actual browser-worker memory/lifecycle still needs measurement.
 
@@ -27,4 +27,4 @@ No vault read/export privileges, no Groq key, no native app permissions or hidde
 
 ## Verification
 
-Seven worker tests pass in Node VM with Chrome API doubles. Actual recorder code passes Chromium synthetic composer scenarios. The attempted real unpacked worker did not become available in this managed environment; real-site and Windows/Mac browser validation remain open. See [test report](../../docs/TEST_REPORT_V0_9.md). Do not broaden the permission scope to work around a failing selector.
+Seven worker tests pass in Node VM with Chrome API doubles. Actual recorder code passes Chromium synthetic composer scenarios. On Windows, full Playwright Chromium loaded the unpacked worker and passed seven scoped checks, including default-off behavior and no injection before optional site permission. The human permission prompt, injected script after consent, real-site capture, and Edge/macOS validation remain open. See [test report](../../docs/TEST_REPORT_V0_9.md). Do not broaden the permission scope to work around a failing selector.

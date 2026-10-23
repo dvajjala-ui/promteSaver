@@ -68,3 +68,16 @@
 
 .entry-body-heading {display:flex;align-items:center;justify-content:space-between;gap:10px;}
 .entry-body-heading .btn {font-size:11px;padding:7px 10px;}
+.recall-tools {display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin:12px 0 8px;}
+.recall-tools .btn {font-size:12px;padding:8px 11px;}
+.recall-tools span,.recall-panel small {color:#9db3ad;font-size:11px;}
+.recall-panel {margin:10px 0 16px;padding:12px;border:1px solid #38554d;border-radius:11px;background:#142521;}
+.recall-panel[hidden] {display:none;}
+.recall-panel>p {margin:0 0 8px;color:#bbd7c7;font-size:12px;}
+.recall-result {display:flex;align-items:start;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid #31483f;}
+.recall-result-detail {min-width:0;overflow-wrap:anywhere;}
+.recall-result strong,.recall-result small {display:block;}
+.recall-result strong {font-size:13px;color:#eef4ef;}
+.recall-result p {font-size:12px;line-height:1.45;white-space:pre-wrap;margin:5px 0;color:#c0d3cb;}
+.recall-result .btn {flex:0 0 auto;font-size:11px;padding:8px;}
+@media(max-width:540px){.recall-result{flex-direction:column}.recall-result .btn{align-self:flex-start}}

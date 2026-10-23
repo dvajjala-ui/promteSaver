@@ -1,0 +1,31 @@
+{
+  "scope": "Actual Chromium UI/content script; synthetic editor pages, mocked origin dependency, extension messaging and provider API. Not live site or provider validation.",
+  "passed": [
+    "Local connection form clears API key after saving; only status is shown",
+    "Outgoing preview is local and redacted; send requires independent consent",
+    "Editing source invalidates previous preview and consent",
+    "AI result requires explicit save and becomes a separate AI-labelled library item",
+    "Assistant dialog remains usable at narrow width without horizontal overflow",
+    "Cancel drops a late provider-fixture response",
+    "Lock clears AI source, result, preview, connection key and stale response",
+    "Companion popup pairs without redirects, clears code, retains host consent and requests only current-site permission",
+    "chatgpt.com: typing shows local hints without capture or cloud requests",
+    "chatgpt.com: trusted Send captures once; Shift+Enter and duplicate event do not",
+    "chatgpt.com: unrelated, synthetic-event and protected input exclusions",
+    "chatgpt.com: recognized temporary page excluded; offline failure visible and no retries",
+    "chatgpt.com: visible Pause stops capture and removes the assistant",
+    "claude.ai: typing shows local hints without capture or cloud requests",
+    "claude.ai: trusted Send captures once; Shift+Enter and duplicate event do not",
+    "claude.ai: unrelated, synthetic-event and protected input exclusions",
+    "claude.ai: recognized temporary page excluded; offline failure visible and no retries",
+    "claude.ai: visible Pause stops capture and removes the assistant",
+    "gemini.google.com: typing shows local hints without capture or cloud requests",
+    "gemini.google.com: trusted Send captures once; Shift+Enter and duplicate event do not",
+    "gemini.google.com: unrelated, synthetic-event and protected input exclusions",
+    "gemini.google.com: recognized temporary page excluded; offline failure visible and no retries",
+    "gemini.google.com: visible Pause stops capture and removes the assistant"
+  ],
+  "errors": [],
+  "browser": "156.0.8078.4",
+  "result": "passed"
+}

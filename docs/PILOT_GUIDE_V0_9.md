@@ -1,6 +1,6 @@
 # Windows / macOS pilot guide - v0.9
 
-Use harmless synthetic prompts first. This is source you run locally, not an installer or a verified everyday recorder. It has not been run on Windows/macOS here.
+Use harmless synthetic prompts first. This is source you run locally, not an installer or a verified everyday recorder. The local vault and browser UI were exercised on Windows with synthetic data; the full extension consent/capture pilot and macOS remain open.
 
 ## 1. Start a safe test vault
 
@@ -77,4 +77,4 @@ Settings -> Check this device -> Save diagnostic report produces a local report 
 
 ## Current unresolved gates
 
-The live local-browser test was blocked by managed-browser policy in the build environment; the unpacked worker probe did not start successfully. Real AI-site selectors and real Groq inference are not verified. Native installation, screen readers, low-spec hardware, OS keychain and full-database encryption remain open. Passing a synthetic test is not a certification that a particular device or third-party editor works.
+The Windows local-browser test passed against a temporary vault. A separate full-Chromium unpacked worker probe passed seven scoped checks, including no injection before optional site permission. The automated permission prompt did not resolve, so enabling a site, installed content-script capture, real AI-site selectors and real Groq inference are not verified. Native installation, screen readers, low-spec hardware, OS keychain and full-database encryption remain open. Passing a synthetic test is not a certification that a particular device or third-party editor works.
