@@ -4,6 +4,7 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Windows.Automation;
 
 namespace PromteSaver.Proof {
@@ -77,8 +78,38 @@ namespace PromteSaver.Proof {
                 ClassifyTemporaryControls(true, true) != "unverified") return 1;
             Console.WriteLine("self-test=passed"); return 0;
         }
+        static int ObserveEvents(AutomationElement window, AutomationElement composer, bool hasText) {
+            int textEvents = 0, sendEvents = 0;
+            AutomationEventHandler changed = (sender, eventArgs) => Interlocked.Increment(ref textEvents);
+            AutomationEventHandler invoked = (sender, eventArgs) => {
+                try {
+                    var element = sender as AutomationElement;
+                    if (element != null && String.Equals(element.Current.Name, "Send", StringComparison.OrdinalIgnoreCase))
+                        Interlocked.Increment(ref sendEvents);
+                } catch (ElementNotAvailableException) { }
+            };
+            bool textAttached = false, sendAttached = false;
+            try {
+                if (hasText) {
+                    Automation.AddAutomationEventHandler(TextPattern.TextChangedEvent, composer, TreeScope.Element, changed);
+                    textAttached = true;
+                }
+                Automation.AddAutomationEventHandler(InvokePattern.InvokedEvent, window, TreeScope.Descendants, invoked);
+                sendAttached = true;
+                Console.WriteLine("event-observation=15-seconds-no-text-read");
+                Thread.Sleep(15000);
+                Console.WriteLine("text-events=" + Volatile.Read(ref textEvents));
+                Console.WriteLine("send-events=" + Volatile.Read(ref sendEvents));
+                Console.WriteLine("text-read=no");
+                return 0;
+            } finally {
+                if (textAttached) Automation.RemoveAutomationEventHandler(TextPattern.TextChangedEvent, composer, changed);
+                if (sendAttached) Automation.RemoveAutomationEventHandler(InvokePattern.InvokedEvent, window, invoked);
+            }
+        }
         public static int Main(string[] args) {
             if (args.Length == 1 && args[0] == "--self-test") return SelfTest();
+            if (args.Length > 1 || (args.Length == 1 && args[0] != "--observe")) return 2;
             try {
                 var handle = GetForegroundWindow();
                 if (handle == IntPtr.Zero) { Console.WriteLine("foreground=missing"); return 2; }
@@ -114,7 +145,8 @@ namespace PromteSaver.Proof {
                 var privateMode = TemporaryMode(window);
                 Console.WriteLine("private-mode=" + privateMode);
                 Console.WriteLine("text-read=no");
-                return privateMode == "off" && (hasValue || hasText) ? 0 : 2;
+                if (privateMode != "off" || !(hasValue || hasText)) return 2;
+                return args.Length == 1 ? ObserveEvents(window, focused, hasText) : 0;
             } catch (Exception error) {
                 Console.WriteLine("survey=unavailable:" + error.GetType().Name);
                 return 2;
