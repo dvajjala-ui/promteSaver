@@ -1,0 +1,198 @@
+
+> promtesaver@0.9.0 check
+> npm run release:check && npm run contracts:check && npm run typecheck && npm run lint:browser && npm test
+
+
+> promtesaver@0.9.0 release:check
+> node scripts/release-check.mjs
+
+{
+  "version": "0.9.0",
+  "consistent": true,
+  "checked": [
+    "lockfile",
+    "lockfilePackage",
+    "tauri",
+    "cargo",
+    "server",
+    "extension"
+  ]
+}
+
+> promtesaver@0.9.0 contracts:check
+> node scripts/generate-contracts.mjs --check
+
+
+> promtesaver@0.9.0 typecheck
+> tsc --noEmit
+
+
+> promtesaver@0.9.0 lint:browser
+> node --check apps/local-web/public/app.js && node --check apps/local-web/public/template-engine.js && node --check apps/local-web/public/assistant.js && node --check apps/browser-helper/popup.js && node --check apps/browser-helper/background.js && node --check apps/browser-helper/editor-core.js && node --check apps/browser-helper/recorder.js
+
+
+> promtesaver@0.9.0 test
+> node --test tests/*.test.ts tests/*.test.mjs
+
+✔ archive survives restart and preserves original text plus pending operations (119.6167ms)
+✔ wrong key and malformed key fail without accepting new records (78.9145ms)
+✔ plaintext SQLite is not silently adopted as an encrypted archive (23.2303ms)
+✔ database and active WAL contain no source-body or source-metadata canaries (65.9592ms)
+✔ replayed puts are idempotent but conflicting immutable source IDs fail (56.8467ms)
+✔ record and outbox commit atomically when queue insertion fails (95.8847ms)
+✔ only explicitly acknowledged operations leave the offline queue (70.9602ms)
+✔ delete removes queued content and tombstone prevents stale resurrection after restart (77.5294ms)
+✔ authenticated encryption rejects payload tampering and swapping record identities (99.1368ms)
+✔ excluded observations never reach durable records or queue, even with draft retention enabled (69.205ms)
+✔ storage applies defense-in-depth redaction and rejects use after close (57.1685ms)
+✔ work lane rejects simultaneous work, keeps cancellation bounded, and becomes reusable (7.4705ms)
+✔ async wrappers are byte-format compatible with synchronous v2 encryption (2385.5175ms)
+✔ async derivation yields to the event loop instead of blocking timers (654.3699ms)
+✔ locking a pending setup cancels it before writing a database or key file (934.1266ms)
+✔ async setup rejects simultaneous sync/async setup and preserves metadata after write failure (863.6975ms)
+✔ lock wins over pending unlock; wrong password and retry still work (1571.3322ms)
+✔ lock and AbortSignal cannot commit a pending passphrase replacement (2228.8622ms)
+✔ async legacy migration authenticates before replacing metadata, preserving records (788.8044ms)
+✔ async backup is interoperable, rejects tampering, and never gathers data after cancellation (327.7413ms)
+✔ real HTTP remains responsive during KDF, rejects overlapping jobs, and lock cancels setup (612.6647ms)
+✔ slow HTTP writes cannot cross a lock/unlock boundary and modify the new session (643.5435ms)
+✔ closing during setup waits for derivation disposal and never creates or unlocks a vault (3259.2403ms)
+✔ async passphrase write failure preserves the old wrapper and keeps a usable vault (1077.3121ms)
+✔ failed async legacy metadata upgrade leaves the original key file and no open archive (688.9323ms)
+✔ locking a real HTTP backup import cancels it without adding data after re-unlock (619.0975ms)
+✔ v0.1 library migration: legacy table without deleted_at opens without destroying items (132.4186ms)
+✔ library: project facets, AND search, relevance, usage sorting, paging, trash and restore (116.142ms)
+✔ encrypted portable backup round-trips full history, encrypted text and captured records (572.2196ms)
+✔ local API: facets/search/paging/trash/use/duplicate, backup export-import and authorization (1935.8048ms)
+✔ write-only browser helper: explicit pairing, one-use code, exclusions, revoke, lock and origin checks (1663.0816ms)
+✔ disabled/paused states prevent capture and explicit exclusions override an allowed app (2.4645ms)
+✔ protected, private, unknown and non-prompt surfaces never reach the sink (15.3789ms)
+✔ schemas reject unknown properties, invalid times and malformed snapshots without reflecting data (3.4739ms)
+✔ latest complete snapshot reconciles edits and paste; Enter in text does not submit (5.4096ms)
+✔ snapshot replacement handles undo, selected replacement, emoji and mixed language without guessing keys (4.5406ms)
+✔ focus switch cannot submit the previous editor text (1.8239ms)
+✔ permission/pause changes and observation gaps clear in-memory drafts (3.9141ms)
+✔ partial snapshots remain partial even after a confirmed submission (11.7141ms)
+✔ a hook can carry a complete submitted prompt with source provenance (18.9956ms)
+✔ duplicate sequence and cross-device input do not produce extra records (14.6939ms)
+✔ draft retention is opt-in and keeps its quality distinct from submission (2.7404ms)
+✔ redaction runs before sink access and covers metadata as well as body (1.331ms)
+✔ redaction recognizes private keys, API tokens, bearer tokens and credential URLs (2.1453ms)
+✔ an incomplete private-key block is redacted before a draft can be retained (1.0495ms)
+✔ a failed sink write can retry the same observation without losing a submission (4.3694ms)
+✔ explicit local recall ranks saved sources and excludes the current or deleted item (1099.8943ms)
+✔ local recall preserves Telugu, Hindi and decomposed accents as complete query terms (927.0778ms)
+✔ Groq key syntax and raw token redaction; no arbitrary provider endpoint (1.845ms)
+✔ AI settings encrypted at rest, absent from public APIs/backups and unavailable when locked (1399.3613ms)
+✔ Groq requires per-request consent; preview is local; real HTTP route builds bounded redacted provider request (660.8134ms)
+✔ AI style use sends preferences and numeric tendencies, never stored sample excerpts (566.321ms)
+✔ AI busy requests rejected; lock aborts in-flight request and old result cannot reach new session (1088.9645ms)
+✔ provider errors, redirects, non-JSON and oversized responses are safe and not retried (2.6066ms)
+✔ provider deadline aborts transport; no automatic retry or retained output (37.6503ms)
+✔ AI per-minute budget bounds provider usage (3.1876ms)
+✔ capture adapter validates site consent, size, stale timestamps and marks observations as draft snapshots (1.6923ms)
+✔ automatic capture requires independent pairing consent, is idempotent, redacts keys and never calls AI (555.3996ms)
+✔ concurrent bridge writes obey the fifteen-per-minute service limit (595.1005ms)
+✔ immutable capture stays unchanged by editing its library copy; permanent deletion preserves tombstone on restore (62.7083ms)
+✔ capture backups preserve links; deleting a capture removes linked copy and history (86.1288ms)
+✔ restored deletion evidence removes an existing linked library copy and history (288.7389ms)
+✔ diagnostics reflect opt-in capabilities without exposing credentials or approved host names (484.2636ms)
+✔ outbound approval is invalidated by changed text, model, settings or locked session (798.6638ms)
+✔ runtime verifier checks all bytes, version and target without executing staged artifacts (125.6189ms)
+✔ runtime verifier rejects duplicate, traversing and untracked runtime files (199.4709ms)
+✔ runtime verifier rejects missing, oversized and invalid manifests (107.8727ms)
+✔ staging rejects a symlinked source root and verification rejects symlink ancestors (63.8047ms)
+✔ desktop child handshake is private, restricted IPC locks, shutdown releases the vault (1611.6591ms)
+✔ parent pipe EOF terminates service; vault can reopen and preserve data (2103.8242ms)
+✔ oversized parent protocol fails closed and releases the lease (467.7636ms)
+✔ exclusive service lease rejects a second instance and explicit recovery refuses live owners (24.7903ms)
+✔ lease release is idempotent and does not remove a replaced ownership record (8.8928ms)
+✔ failed port binding releases the attempted directory lease (26.1719ms)
+✔ explicit stale-lease recovery succeeds only after the recorded child has exited (122.2752ms)
+✔ desktop staging includes only the runtime sources and no user vault, secrets, fixtures or tests (76.1948ms)
+✔ native targets are explicit and cross-target runtime staging is rejected (4.161ms)
+✔ staging rejects accidental vault metadata rather than copying it as JSON (15.0105ms)
+✔ runtime compatibility rejects other major versions and prereleases (2.1033ms)
+✔ diagnostics inspect file sizes, not file contents; support data is strictly allowlisted (6.6519ms)
+✔ real HTTP diagnostics require unlocked authentication and do not renew the idle deadline (1073.1096ms)
+✔ drafts are encrypted, bounded, isolated from library/history/portable export, and recover after restart (119.4776ms)
+✔ draft limit, invalid identifiers/oversized data, and tamper detection are enforced (118.0222ms)
+✔ unlocked HTTP draft API requires bearer token, rejects invalid data and preserves drafts through locking (1634.0228ms)
+✔ MV3 worker starts unpaired, storage is trusted-context only, and content scripts get no bearer secrets (15.4628ms)
+✔ MV3 checks actual host permission even if enabled settings survived revocation (5.9995ms)
+✔ MV3 Pause wins over pending Enable registration and aborts an active capture (17.1942ms)
+✔ MV3 concurrent changes on different sites preserve both choices and failed registration stays disabled (6.7471ms)
+✔ MV3 revocation during an async authorization read cannot forward text (6.7571ms)
+✔ MV3 revocation aborts fetch and a late old response cannot clear a new pairing (84.8179ms)
+✔ MV3 authorization cannot switch to another pairing between storage reads (26.166ms)
+✔ MV3 source validation rejects wrong origin, subframes, incognito and page attempts to enable access (5.4213ms)
+✔ MV3 site registration scoped to optional host, top frame and static content files (5.0356ms)
+✔ MV3 forwards only allowed host-derived payload to loopback; no prompts persist in extension storage (5.8831ms)
+✔ MV3 locking failures clear session permission; unreachable service does not queue or retry text (26.9647ms)
+✔ MV3 does not send expired, unapproved-site, unpaired or oversized captures (4.8144ms)
+✔ MV3 bridge limits response bytes and bounds parallel in-flight captures without queuing (22.9155ms)
+✔ local library CRUD, search, tags, pinning, templates, lock/reopen and captures coexist (106.0735ms)
+✔ revision history is encrypted, can restore an earlier version, and is removed on delete (74.0994ms)
+✔ library encrypts sensitive fields; plaintext canaries absent in SQLite/WAL (59.1481ms)
+✔ library redacts credential patterns and rejects malformed input and encryption tampering (112.1461ms)
+✔ local web: session token, host/origin checks, passphrase lock, CRUD and offline assets (2482.5013ms)
+✔ preview API bounds long bodies and metadata; full fetch and ETag preserve edits (1261.7671ms)
+✔ offline writing check recognizes explicitly selected spacing and duplicate-word candidates (7.8039ms)
+✔ writing issue positions preserve unicode UTF-16 offsets (2.4778ms)
+✔ empty input is fine, non-string and over-limit input fail safely (8.4907ms)
+✔ trailing whitespace and readability warnings never apply automatic corrections (3.1091ms)
+✔ writing checker bounds issue counts and keeps deterministic ordering (2.7611ms)
+✔ release metadata is aligned and stale native versions fail before packaging (140.2739ms)
+✔ ETag detects edits and pinning but does not conflict on a copy/use event (102.531ms)
+✔ batch operations are conditional, bounded and atomic; stale member changes none (133.8883ms)
+✔ batch SQL failure rolls back earlier members, including version history (112.4058ms)
+✔ bounded search cache invalidates on writes, reuse, trash and external DB commits (99.4195ms)
+✔ encrypted preferences persist and reject unbounded idle/unknown values (78.5598ms)
+✔ v3 backups preserve tombstones and do not resurrect captures from an older backup (145.3539ms)
+✔ backup preview reports collisions without mutating the archive; legacy v1 still imports (124.5304ms)
+✔ malformed history groups, future revisions and duplicate captures reject before any import (124.7798ms)
+✔ private-key variants and multiword secrets are not retained even with whitespace (3.1244ms)
+✔ submission quality remains conservative when only a snapshot and submit signal exist (8.6594ms)
+✔ schema-subset validation checks conditions, additional properties, types and dates (3.4424ms)
+✔ authenticated status polling does not extend server auto-lock (1681.4782ms)
+✔ activity renews deadline, preferences persist and security headers are present (1141.8955ms)
+✔ API ETag rejects stale edits without destroying either saved text or history (519.1042ms)
+✔ passphrase change locks vault, revokes bridge access and requires the replacement (1700.211ms)
+✔ browser write token is bound to the extension origin that paired it (405.7432ms)
+✔ JSON content-type lookalikes are rejected; Unicode prompt sizes obey character rather than ASCII limits (415.4112ms)
+✔ an in-flight extension write cannot survive revocation and a new vault unlock (762.6342ms)
+✔ template fields deduplicate and preserve first default in appearance order (3.7776ms)
+✔ template replacement is single pass and inserted text remains literal data (0.7902ms)
+✔ template uses explicit empty values, defaults, repeated variables, and spaced names (0.632ms)
+✔ malformed template tokens are not evaluated or executed (3.4375ms)
+✔ template variable count and expanded output have explicit bounds (2.9057ms)
+✔ bounded ranker matches a full reference sort for every bounded capacity and input order (60.1814ms)
+✔ ranking rejects invalid resource caps and stays sub-quadratic on deep result windows (43.376ms)
+✔ encrypted search pages preserve relevance, popularity, recent and stable tie-break order (1009.5491ms)
+✔ v2 setup stores a wrapped random key, not the passphrase, and reopens after lock (958.7478ms)
+✔ passphrase change preserves ciphertext/history/settings; old password no longer opens active envelope (1986.74ms)
+✔ wrong current password cannot replace key metadata (668.0126ms)
+✔ legacy v1 upgrade re-wraps only after authenticating and retains record ciphertext (569.4365ms)
+✔ failed legacy metadata migration leaves original envelope usable (815.6304ms)
+✔ failed passphrase metadata write preserves the current credential (1243.0444ms)
+✔ failed fresh setup cleans its uncommitted empty DB and supports retry (579.0224ms)
+✔ missing database fails closed instead of creating an empty vault during unlock (295.5998ms)
+✔ untrusted KDF profiles and oversized metadata are rejected before key derivation (297.8633ms)
+✔ writing profiles are encrypted at rest, bounded, and survive restart (128.5898ms)
+✔ style profiles reject tampering, invalid types, oversized or extra fields and stale edits (91.7805ms)
+✔ encrypted v3 backup includes profiles; preview is read-only and old v2 imports are supported (121.2399ms)
+✔ writing profile count cap is enforced (117.8474ms)
+✔ writing studio API uses bearer auth, explicit analysis, excerpt opt-in and safe lifecycle (908.2077ms)
+✔ standalone browser module creates portable style prompt (4.1349ms)
+✔ browser module refuses oversize input (0.8321ms)
+✔ builds bounded deterministic opt-in profile (7.9721ms)
+✔ rejects unbounded or missing samples (2.1104ms)
+✔ styles do not make any automatic network or file reads (0.8006ms)
+ℹ tests 154
+ℹ suites 0
+ℹ pass 154
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 17548.481

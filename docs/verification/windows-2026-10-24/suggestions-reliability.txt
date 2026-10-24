@@ -1,0 +1,54 @@
+
+> promtesaver@0.9.0 bench:reliability
+> node scripts/bench-reliability.ts 5000
+
+{
+  "version": "0.9.0",
+  "records": 5000,
+  "node": "v24.16.0",
+  "platform": "win32",
+  "architecture": "x64",
+  "seedMs": 7191.85,
+  "distinctQueryCacheMiss": {
+    "samples": 10,
+    "p50Ms": 104.32,
+    "p95Ms": 134.11,
+    "maximumMs": 134.11
+  },
+  "explicitRecall": {
+    "samples": 10,
+    "p50Ms": 101.83,
+    "p95Ms": 108.02,
+    "maximumMs": 108.02
+  },
+  "identicalQueryCacheHit": {
+    "samples": 20,
+    "p50Ms": 1.27,
+    "p95Ms": 2.84,
+    "maximumMs": 3.05
+  },
+  "deepPageMs": 132.22,
+  "lowMemory": {
+    "coldMs": 100.06,
+    "warm": {
+      "samples": 20,
+      "p50Ms": 0.61,
+      "p95Ms": 0.79,
+      "maximumMs": 1.11
+    }
+  },
+  "facets": {
+    "coldMs": 86.91,
+    "warmMs": 0.12
+  },
+  "rssMiB": 85.7,
+  "heapUsedMiB": 12.49,
+  "dbAndWalMiB": 11.44,
+  "limitations": [
+    "Synthetic data on this host only",
+    "RSS is a point-in-time Node process measurement, not peak or whole-app memory",
+    "Browser and webview memory excluded",
+    "Cold full-text search and explicit recall still decrypt/scan O(n) rows",
+    "Warm results are keyed cache hits, not a general search-speed guarantee"
+  ]
+}

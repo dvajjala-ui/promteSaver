@@ -25,7 +25,7 @@ export function sourcePlan(base=root) {
   };
   for(const path of ['packages/contracts','packages/capture-core','packages/local-store','packages/writing-style','apps/local-web'])walk(path);
   if(!lstatSync(safePath(base,'apps/desktop/sidecar.ts')).isFile())throw new Error('Missing sidecar source');
-  files.push('apps/desktop/sidecar.ts');return files.sort();
+  files.push('apps/desktop/sidecar.ts','apps/desktop/codex-source.ts');return files.sort();
 }
 export function findNodeLicense(execPath=process.execPath) {
   // Official Node archives normally retain LICENSE beside node.exe or above bin/node.

@@ -1,6 +1,16 @@
-# Architecture - consent-scoped browser capture and explicit AI
+# Architecture - Windows preview, consent-scoped capture and explicit AI
 
-Date: 2026-10-23. Status: implemented source, tested in the scopes stated below. The local web runtime remains the working host; native Tauri remains experimental source.
+Original design date: 2026-10-23. Current Windows preview updated 2026-10-25. The local Node service still owns the vault. A compiled WinForms window now starts that service as a private child for an unsigned portable Windows developer preview; native Tauri remains experimental, uncompiled source. The new native vault uses a random secret protected by Windows CurrentUser DPAPI, and its directory is separate from the older passphrase vault. The preview's browser helper is separate and still requires per-site opt-in; the native pairing action grants only the selected supported host. Real Codex transcript collection is disabled in the public preview pending a verified private/protected-session boundary.
+
+## Native preview and source gate
+
+`apps/desktop/windows-host/Program.cs` owns one child `apps/desktop/sidecar.ts` process, connects through a private local handshake, and provides a native one-click vault gate/Capture window, recent evidence, explicit offline wording review, one-host browser pairing, visible tray pause/lock/quit, and source status. The Windows CurrentUser DPAPI blob is held in `desktop-credential.bin` beside the new vault data. Missing or tampered credentials fail closed; neither old-vault migration nor cross-account recovery is implemented. The build script stages allowlisted source, the supported Node 24 runtime, full Node license and unpacked browser helper in a portable folder. The runtime manifest detects accidental file changes against its matching manifest; it is not a signature or a defense when both are replaced. Vault ownership remains single-service, and quitting stops the child. A compiled EXE temporary-vault self-test and extracted-ZIP self-test passed; installer, clean-device, long-running tray, macOS and whole-app resource acceptance did not.
+
+The optional **Start with Windows** checkbox writes one per-user `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` value for the current EXE path. It is off by default; disabling removes that value only if it still points to this EXE. Login launch opens the visible locked app and does not restore browser pairing or source approval. Its registry toggle and actual login behavior remain untested.
+
+`apps/desktop/codex-source.ts` is an event-driven, bounded JSONL producer. Construction does not read files; explicit start baselines existing files at EOF. It accepts only `event_msg` entries with a `user_message` payload, prevents path escape/symlink traversal, and reports truncation/rotation/backlog gaps. `apps/local-web/native-capture.ts` binds an injected test source to the unlocked session, checks generation before storing, and uses `saveNativeCapture` for encrypted immutable `draft_snapshot` evidence plus a linked editable copy. Lock/pause invalidate the producer and in-flight writes. These behaviors are covered on synthetic session files and do not certify the undocumented real Codex format. Because real private/protected session exclusion is not verified, the public Windows preview must not read the user's real `~/.codex/sessions` directory. The product's broad cross-application capture goal remains unimplemented.
+
+`GET /api/capture/status` is an authorized observational read that does not renew idle time. `POST /api/capture/pause` revokes current browser pairing and any internal test source. `GET /api/capture/review` returns at most 20 recent immutable saved snapshots with bounded local `proofreadWriting` suggestions on explicit request, preserving those snapshots. Capture safety rules may redact obvious secrets before persistence; a snapshot is not guaranteed byte-for-byte raw input. This is not an automatic AI rewrite or a background job.
 
 ## Data flow
 
@@ -42,6 +52,18 @@ flowchart LR
 - Existing bounded pagination, preview hydration, caches and async password work retained. New searches still decrypt/scan the archive. No overall memory-reduction claim.
 - Explicit recall accepts at most 6,000 characters from the vault editor, scans decrypted saved entries only while unlocked, and returns at most five source previews. A selected source is fetched in full and its ETag rechecked before it can be added to the unsaved draft. It never grants the browser companion read access or runs a model; relevance is keyword overlap, not learned preference inference.
 
+## Reviewed source extraction — local increment, 24 October 2026
+
+The assistant now offers two separate actions for a saved library item. Understanding returns a structured task, exact source constraint quotes and unknowns. The user reviews that output before extraction, which returns up to five exact complete sentence/line quotes with title and review reason. Both requests use the same redacted outgoing-message preview, fresh consent, fixed provider endpoint and bounded single-request runner. Source ID and current ETag bind previews and saves; edits or deletion during provider work reject the result. The output must have the expected JSON shape and a normal `stop` completion reason. No model output executes as code or saves automatically.
+
+A selected quote is stored as an independent editable template with chosen task/project/personal scope. Its encrypted notes record source item ID, revision, quote range and source hash, but there is no structured versioned derivation table. Source deletion does not cascade to independent copies. Task quotes are excluded from automatic recall because the current query has no stable task identity; project quotes require an exact selected project; personal quotes may cross projects. Users can still find their templates manually in the library. Conservative quote boundaries block simple missing-negation substrings but cannot establish meaning across paragraphs. No inferred personal preference or repeated-human-evidence claim is made. The stored source-extract tag also does not assert that a direct API save came from a model.
+
+## Related-result feedback and gap receipts — local increment, 24 October 2026
+
+Optional `worked`, `not-useful` or `hidden` feedback lives inside each encrypted library payload with the exact content revision and timestamp. It is included in portable snapshots, reset when the item content changes and retained on the previous encrypted history revision. Only explicit `hidden` feedback suppresses local related results; the other choices do not silently alter ranking. Related results show local keyword overlap and source/project/date, offer exact clipboard wording or an editable draft copy, and copy a source project into the draft only on a user click. They do not infer a missing instruction or claim model confidence.
+
+The capture inbox displays a quality/source/date/delete receipt from existing record fields. The browser worker separately keeps at most 20 session-only `{host, reason, at}` save-gap entries in trusted extension storage; reasons come from a fixed allowlist and concurrent writes are serialized. It never stores failed prompt text for retry. The popup can show or clear these entries. Unknown editor gaps that never reach the worker cannot appear, and an unconfirmed response cannot establish whether a remote write happened.
+
 ## Storage and compatibility
 
 Key-envelope v2 unchanged. Groq configuration is an AES-256-GCM metadata payload with row-bound AAD and omitted from portable backups; full vault copies retain encrypted configuration. Removing the key is not provider revocation or physical erasure.
@@ -51,6 +73,8 @@ Snapshots with linked browser captures use v4; otherwise v3. Import accepts v1-v
 ## Modules
 
 - `apps/local-web/ai.ts`: transformations, redaction, bounded/cancellable provider transport.
+- `apps/desktop/windows-host/{Program.cs,build-preview.ps1}`: native Windows preview and explicit portable staging.
+- `apps/desktop/codex-source.ts`, `apps/local-web/native-capture.ts`: injected test transcript producer and session gate; public real-directory collection disabled.
 - `apps/local-web/browser-capture.ts`: host/session consent validation and evidence construction.
 - `apps/local-web/server.ts`: authorization, preview digest and new APIs.
 - `packages/local-store/ai-settings.ts`: strict encrypted-setting schema.
@@ -60,9 +84,19 @@ Snapshots with linked browser captures use v4; otherwise v3. Import accepts v1-v
 
 ## Important limits
 
-This is not a global OS recorder, semantic memory model, automatic AI processing pipeline, local LLM, cloud sync service or verified installed extension. A loopback app is not a native release. Real-site content scripts can encounter changed selectors, nested frames, IME, temporary-mode variants and unusual keyboard behavior. Every claimed supported environment needs an explicit pilot test rather than a broad marketing claim.
+This is not a global OS recorder, semantic memory model, automatic AI processing pipeline, local LLM, cloud sync service or verified installed extension. A compiled portable native preview is not an installed or signed release. Real-site content scripts can encounter changed selectors, nested frames, IME, temporary-mode variants and unusual keyboard behavior. Every claimed supported environment needs an explicit pilot test rather than a broad marketing claim.
 
-## Primary integration references (consulted 2026-10-23)
+## Capture reliability increment — 24 October 2026
+
+Manual preview injects the same isolated `editor-core.js` used by the recorder, then invokes its focused-editor reader. Private/temporary/hidden pages and protected/inert/disabled fields are rejected before reading text. The returned host must match the initially approved tab host. Single-line inputs are excluded. Known private markers are best-effort checks, not universal detection of confidential site modes.
+
+The worker checks actual optional host permission as well as persisted site choice and vault pairing. Site updates serialize their storage read/modify/write and script registration across hosts; a newer site operation invalidates an older one immediately. Failed registration persists a disabled choice. An authorization epoch and active AbortControllers invalidate pending work when site/session changes are observed; capture also rechecks the pairing token, port, expiry and host scope after async reads. Browser event delivery and a remote request already received cannot be undone. A paused worker never queues text for later.
+
+The producer cancels hint timers when focus moves away, refreshes state after page restoration/visibility changes, tracks composition, rejects ambiguous composers, and confines form-associated Send buttons to that form. State-request and UI generations discard out-of-order state and old acknowledgements. These changes preserve synchronous snapshotting before page send handlers and conservative `draft_snapshot` evidence. No page method is patched and no polling or mutation observer is added.
+
+Recall query tokens now retain Unicode marks along with letters/numbers. This repairs Telugu/Hindi vowel-sign fragmentation and decomposed-accent matching without changing storage, ranking weights, result limits or introducing a plaintext index. It does not add stemming, translation or semantic retrieval.
+
+## Primary integration references (consulted 2026-10-23; Chrome scripting/permissions rechecked 2026-10-24)
 
 - Groq models: https://console.groq.com/docs/models
 - Groq request schema: https://console.groq.com/docs/api-reference

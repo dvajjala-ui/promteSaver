@@ -16,6 +16,7 @@ export interface PendingOperation {
   kind: 'put' | 'delete';
 }
 export type LibraryKind = 'prompt' | 'template';
+export type LibraryFeedback = 'worked' | 'not-useful' | 'hidden';
 export interface LibraryEntry {
   id: string;
   title: string;
@@ -34,6 +35,9 @@ export interface LibraryEntry {
   lastUsedAt?: string | null;
   deletedAt?: string | null;
   captureId?: string;
+  feedback?: LibraryFeedback;
+  feedbackRevision?: number;
+  feedbackAt?: string;
 }
 /** Short-lived editing work, never a captured prompt or a committed library version. */
 export interface EditorDraft {
@@ -255,14 +259,25 @@ export class EncryptedArchive {
   }
   /** One transaction links immutable redacted evidence to an editable library copy. */
   saveBrowserCapture(record: PromptRecord): {saved:boolean;redactions:number} {
+    return this.#saveLinkedCapture(record, 'Browser inbox', ['browser-capture','draft-snapshot'],
+      'Observed at a send action; delivery is not verified.');
+  }
+  /** Only the trusted, explicitly opted-in desktop producer calls this method. */
+  saveNativeCapture(record: PromptRecord): {saved:boolean;redactions:number} {
+    if(record.surface.appId!=='codex-local-session'||record.deviceId!=='desktop-codex-transcript'||
+       record.quality!=='draft_snapshot'||record.sourceMethod!=='local_transcript')throw new Error('Invalid native capture');
+    return this.#saveLinkedCapture(record, 'Desktop inbox', ['desktop-capture','draft-snapshot'],
+      'Observed in an explicitly approved local Codex session transcript; provider delivery is not verified.');
+  }
+  #saveLinkedCapture(record: PromptRecord, project:string, tags:string[], note:string): {saved:boolean;redactions:number} {
     this.#ensureOpen();assertPromptRecord(record);
     return this.#transaction(()=>{
       if(this.#db.prepare('SELECT 1 FROM tombstones WHERE id=?').get(record.id)||this.get(record.id))return {saved:false,redactions:0};
       this.put(record);
       const safe=this.get(record.id)!;
       const saved=this.saveLibrary({title:safe.text.trim().split('\n')[0]!.slice(0,100)||'Captured prompt',body:safe.text,
-        kind:'prompt',project:'Browser inbox',source:safe.surface.appId,tags:['browser-capture','draft-snapshot'],
-        notes:'Observed at a send action; delivery is not verified. Captured '+safe.recordedAt+'. Original evidence is separate from this editable copy.'});
+        kind:'prompt',project,source:safe.surface.appId,tags,
+        notes:note+' Captured '+safe.recordedAt+'. Original evidence is separate from this editable copy.'});
       const item={...saved.item,captureId:record.id};
       this.#db.prepare('UPDATE library SET payload=? WHERE id=?').run(this.#seal(`library:${item.id}`,Buffer.from(JSON.stringify(item))),item.id);
       return {saved:true,redactions:safe.redactions+saved.redactions};
@@ -479,7 +494,8 @@ export class EncryptedArchive {
       redactions: (existing?.redactions ?? 0) + redactions,
       revision: (existing?.revision ?? 1) + (contentChanged ? 1 : 0),
       useCount: existing?.useCount ?? 0, lastUsedAt: existing?.lastUsedAt ?? null, deletedAt: null,
-      ...(existing?.captureId ? {captureId:existing.captureId} : {})
+      ...(existing?.captureId ? {captureId:existing.captureId} : {}),
+      ...(!contentChanged && existing?.feedback ? {feedback:existing.feedback,feedbackRevision:existing.feedbackRevision,feedbackAt:existing.feedbackAt} : {})
     };
     const envelope = this.#seal(`library:${item.id}`, Buffer.from(JSON.stringify(item)));
     this.#transaction(() => {
@@ -525,7 +541,9 @@ export class EncryptedArchive {
       throw new Error('Invalid recall request');
     const normalize = (value: string) => value.normalize('NFKC').toLowerCase();
     const common = new Set(['about','after','again','also','another','before','could','from','have','into','need','only','please','prompt','project','should','some','that','them','there','these','this','using','want','what','when','where','which','with','would','your']);
-    const terms = [...new Set(normalize(text).match(/[\p{L}\p{N}]{3,}/gu) ?? [])]
+    // Vowel signs and combining accents are part of the word. Dropping marks
+    // split Telugu/Hindi keywords into unusable fragments despite retaining text.
+    const terms = [...new Set(normalize(text).match(/[\p{L}\p{N}][\p{L}\p{M}\p{N}]{2,}/gu) ?? [])]
       .filter(term => !common.has(term)).slice(0,12);
     if (!terms.length) return [];
     const preferredProject = normalize(project.trim());
@@ -536,6 +554,16 @@ export class EncryptedArchive {
       const id = row.id as string;
       if (id === excludeId) continue;
       const item = this.#decodeLibrary(id, row.payload as Uint8Array);
+      if(item.feedback==='hidden' && item.feedbackRevision===item.revision)continue;
+      // Reviewed extracts retain their explicit reuse scope. A task-only quote
+      // stays discoverable in the library, but has no durable task identity for
+      // automatic recall. Project quotes require an exact selected project.
+      if (item.tags.includes('instruction-block')) {
+        const scopes = item.tags.filter(tag => /^scope-(?:task|project|personal)$/.test(tag));
+        if (scopes.length !== 1 || scopes[0] === 'scope-task') continue;
+        if (scopes[0] === 'scope-project' &&
+            (!preferredProject || normalize(item.project) !== preferredProject)) continue;
+      }
       const title = normalize(item.title), tags = normalize(item.tags.join(' '));
       const itemProject = normalize(item.project), notes = normalize(item.notes ?? '');
       const body = normalize(item.body);
@@ -637,6 +665,22 @@ export class EncryptedArchive {
     if (!existing || existing.deletedAt) throw new Error('Library item not found');
     const item = { ...existing, useCount: Math.min((existing.useCount ?? 0) + 1, 1_000_000_000), lastUsedAt: new Date().toISOString() };
     this.#db.prepare('UPDATE library SET payload=? WHERE id=?').run(this.#seal(`library:${id}`, Buffer.from(JSON.stringify(item))), id);
+    this.#invalidate();
+    return item;
+  }
+  /** Feedback is encrypted with the item and applies only to this content revision. */
+  setLibraryFeedback(id: string, revision: number, feedback: LibraryFeedback | null): LibraryEntry {
+    this.#ensureOpen();
+    if (!Number.isSafeInteger(revision) || revision < 1 ||
+        (feedback !== null && !['worked','not-useful','hidden'].includes(feedback)))
+      throw new Error('Invalid library feedback');
+    const existing=this.getLibrary(id);
+    if(!existing||existing.deletedAt)throw new Error('Library item not found');
+    if(existing.revision!==revision)throw new LibraryConflictError();
+    const item: LibraryEntry={...existing};
+    delete item.feedback;delete item.feedbackRevision;delete item.feedbackAt;
+    if(feedback!==null){item.feedback=feedback;item.feedbackRevision=revision;item.feedbackAt=new Date().toISOString();}
+    this.#db.prepare('UPDATE library SET payload=? WHERE id=?').run(this.#seal(`library:${id}`,Buffer.from(JSON.stringify(item))),id);
     this.#invalidate();
     return item;
   }
@@ -768,6 +812,9 @@ export class EncryptedArchive {
       Number.isSafeInteger(item.revision) && item.revision >= 1 && Number.isSafeInteger(item.redactions) && item.redactions >= 0 &&
       (item.useCount === undefined || Number.isSafeInteger(item.useCount) && item.useCount >= 0) &&
       (item.lastUsedAt == null || typeof item.lastUsedAt === 'string' && Number.isFinite(Date.parse(item.lastUsedAt))) &&
+      (item.feedback === undefined && item.feedbackRevision === undefined && item.feedbackAt === undefined ||
+       ['worked','not-useful','hidden'].includes(item.feedback as string) && item.feedbackRevision === item.revision &&
+       typeof item.feedbackAt === 'string' && Number.isFinite(Date.parse(item.feedbackAt))) &&
       (item.deletedAt == null || typeof item.deletedAt === 'string' && Number.isFinite(Date.parse(item.deletedAt)));
     if (!snapshot.items.every(item => validItem(item) && !identifiers.has(item.id) && !!identifiers.add(item.id))) throw new Error('Invalid backup contents');
     if (!snapshot.histories.every(entry => !!entry && typeof entry.id === 'string' && identifiers.has(entry.id) &&
@@ -868,23 +915,81 @@ export class EncryptedArchive {
       pinned: item.pinned, createdAt: new Date(item.createdAt).toISOString(), updatedAt: new Date(item.updatedAt).toISOString(),
       revision: item.revision, redactions: item.redactions + clean.reduce((count,value) => count + value.count, 0),
       useCount: Math.min(item.useCount ?? 0, 1_000_000_000), lastUsedAt: item.lastUsedAt ? new Date(item.lastUsedAt).toISOString() : null,
-      deletedAt: item.deletedAt ? new Date(item.deletedAt).toISOString() : null, ...(item.captureId ? {captureId:item.captureId} : {}) };
+      deletedAt: item.deletedAt ? new Date(item.deletedAt).toISOString() : null, ...(item.captureId ? {captureId:item.captureId} : {}),
+      ...(item.feedback ? {feedback:item.feedback,feedbackRevision:item.feedbackRevision,feedbackAt:new Date(item.feedbackAt!).toISOString()} : {}) };
   }
   /** Deleting evidence from Captured also removes its linked editable copy and history. */
   deleteCaptureWithCopies(id: string): void {
     this.#ensureOpen();
     this.#transaction(()=>{
-      for(const row of this.#db.prepare('SELECT id FROM library').all()) {
-        const item=this.getLibrary(row.id as string);
-        if(item?.captureId===id){this.#db.prepare('DELETE FROM library_history WHERE item_id=?').run(item.id);this.#db.prepare('DELETE FROM library WHERE id=?').run(item.id);}
-      }
+      this.#deleteLinkedCaptureCopies(new Set([id]));
       this.delete(id);
     });
     this.#invalidate();
   }
+  #deleteLinkedCaptureCopies(ids: ReadonlySet<string>): void {
+    for(const row of this.#db.prepare('SELECT id FROM library').all()) {
+      const item=this.getLibrary(row.id as string);
+      if(item?.captureId&&ids.has(item.captureId)){
+        this.#db.prepare('DELETE FROM library_history WHERE item_id=?').run(item.id);
+        this.#db.prepare('DELETE FROM library WHERE id=?').run(item.id);
+      }
+    }
+  }
   recentCaptures(limit = 20): PromptRecord[] {
     this.#ensureOpen(); boundedLimit(limit, 100);
     return this.#db.prepare('SELECT id FROM records ORDER BY rowid DESC LIMIT ?').all(limit).map(row => this.get(row.id as string)!);
+  }
+  capturePage(query = '',limit = 20,offset = 0): {items:PromptRecord[];total:number} {
+    this.#ensureOpen();boundedLimit(limit,100);
+    if(typeof query!=='string'||query.length>200||!Number.isInteger(offset)||offset<0||offset>100000)
+      throw new Error('Invalid capture search');
+    const term=query.trim().toLocaleLowerCase();
+    const items:PromptRecord[]=[];let total=0;
+    for(const row of this.#db.prepare('SELECT id FROM records ORDER BY rowid DESC').iterate()){
+      const item=this.get(row.id as string)!;
+      if(term&&!`${item.text} ${item.surface.appId} ${item.surface.title??''}`.toLocaleLowerCase().includes(term))continue;
+      if(total>=offset&&items.length<limit)items.push(item);
+      total++;
+    }
+    return {items,total};
+  }
+  #retentionCandidates(cutoff: string): {id:string;recordedAt:string}[] {
+    return this.#db.prepare('SELECT id FROM records').all()
+      .map(row=>this.get(row.id as string)!)
+      .filter(item=>item.recordedAt<cutoff)
+      .map(item=>({id:item.id,recordedAt:item.recordedAt}))
+      .sort((a,b)=>a.id.localeCompare(b.id));
+  }
+  captureRetentionPreview(days: number): {days:number;cutoff:string;count:number;oldest:string|null;digest:string} {
+    this.#ensureOpen();
+    if(![7,30,90,365].includes(days)) throw new Error('Invalid capture retention');
+    const cutoff = new Date(Date.now()-days*86400000).toISOString();
+    const rows=this.#retentionCandidates(cutoff);
+    return {days,cutoff,count:rows.length,oldest:rows.reduce<string|null>((earliest,item)=>!earliest||item.recordedAt<earliest?item.recordedAt:earliest,null),
+      digest:createHash('sha256').update(JSON.stringify(rows)).digest('hex')};
+  }
+  purgeCapturesOlderThan(preview: unknown): number {
+    this.#ensureOpen();
+    if(!preview||typeof preview!=='object'||Array.isArray(preview)) throw new Error('Invalid capture retention');
+    const approved=preview as Record<string,unknown>;
+    if(Object.keys(approved).some(key=>!['days','cutoff','count','oldest','digest'].includes(key))||
+      ![7,30,90,365].includes(approved.days as number)||typeof approved.cutoff!=='string'||
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(approved.cutoff)||
+      !Number.isInteger(approved.count)||typeof approved.digest!=='string'||!/^[a-f0-9]{64}$/.test(approved.digest))
+      throw new Error('Invalid capture retention');
+    const cutoff=approved.cutoff;
+    const age=Date.now()-Date.parse(cutoff);
+    if(!Number.isFinite(age)||age<(approved.days as number)*86400000||age>(approved.days as number)*86400000+10*60000)
+      throw new Error('Capture retention preview expired');
+    const rows=this.#retentionCandidates(cutoff);
+    const digest=createHash('sha256').update(JSON.stringify(rows)).digest('hex');
+    if(rows.length!==approved.count||digest!==approved.digest) throw new Error('Capture retention preview changed');
+    return this.#transaction(()=>{
+      this.#deleteLinkedCaptureCopies(new Set(rows.map(item=>item.id)));
+      for(const item of rows)this.delete(item.id);
+      this.#invalidate(); return rows.length;
+    });
   }
 
   pending(limit = 100): PendingOperation[] {

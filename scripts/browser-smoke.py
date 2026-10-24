@@ -57,6 +57,7 @@ def main():
             def unlock(password=PASSWORD):
                 page.fill('#passphrase', password);page.click('#gateAction');expect(page.locator('#shell')).to_be_visible()
             def new_item(title, body, kind='prompt'):
+                if not page.locator('#libraryView').is_visible(): page.locator('#mainNav [data-filter="all"]').click()
                 page.click('#newButton');page.fill('#entryTitle', title);page.fill('#entryBody', body);page.select_option('#entryKind', kind);page.click('#saveEntry');expect(page.locator('#editorDialog')).not_to_be_visible()
             expect(page.locator('#gate')).to_be_visible()
             if args.mode == 'fixture':
@@ -76,7 +77,56 @@ def main():
                 page.emulate_media(reduced_motion='no-preference')
                 passed('Cancelable setup respects reduced motion and discards late responses')
             page.fill('#passphrase', PASSWORD);page.fill('#confirm', PASSWORD);page.click('#gateAction')
-            expect(page.locator('#shell')).to_be_visible();page.click('#demoButton');expect(cards()).to_have_count(9)
+            expect(page.locator('#shell')).to_be_visible()
+            expect(page.locator('#captureView')).to_be_visible()
+            expect(page.locator('#captureStateTitle')).to_have_text('Connect your first capture source')
+            expect(page.locator('#captureEmpty')).to_be_visible()
+            expect(page.locator('#writingNav')).not_to_be_visible()
+            expect(page.locator('#assistantNav')).not_to_be_visible()
+            expect(page.locator('#libraryView')).not_to_be_visible()
+            passed('Capture is the default workspace; additional tools stay outside primary navigation')
+            if args.mode == 'fixture':
+                page.evaluate('''()=>{__fixture.captureStatus={state:'ready',browser:{paired:true,authorized:true,hosts:['chatgpt.com'],expiresAt:Date.now()+100000},native:{available:false}};__fixture.captures=Array.from({length:8},(_,i)=>({id:'capture-home-'+i,text:i===0?'<img src=x onerror="window.__unsafeCapture=true">'+'x'.repeat(900):'Synthetic captured prompt '+i,quality:'draft_snapshot',surface:{appId:'chatgpt.com',title:'Synthetic capture '+i},sourceMethod:'browser_composer',recordedAt:new Date().toISOString()}));}''')
+                page.click('#captureRefresh');expect(page.locator('#captureRecentList article')).to_have_count(5)
+                expect(page.locator('#captureStateTitle')).to_have_text('Capture pairing ready')
+                assert page.locator('#captureRecentList img').count()==0
+                assert len(page.locator('#captureRecentList p').first.inner_text())<=421
+                assert page.evaluate('window.__unsafeCapture') is None
+                page.set_viewport_size({'width':390,'height':844})
+                assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'), 'Capture home must fit narrow screens'
+                page.locator('#captureView').screenshot(path=str(output/'capture-home-mobile.png'))
+                page.set_viewport_size({'width':1440,'height':960})
+                page.locator('#captureView').screenshot(path=str(output/'capture-home.png'))
+                page.click('#capturePause');expect(page.locator('#actionDialog')).to_be_visible();page.click('#actionAccept')
+                expect(page.locator('#captureStateTitle')).to_have_text('Connect your first capture source')
+                expect(page.locator('#capturePause')).to_be_disabled()
+                page.click('#captureSetupButton');expect(page.locator('#captureSetup')).to_be_visible()
+                assert not page.is_checked('#bridgeAuto')
+                page.click('#captureSetupClose')
+                page.evaluate("__fixture.captureStatus={state:'unpaired',browser:{paired:false,authorized:false,hosts:[]},native:{available:true,source:'codex-local-session',enabled:false,state:'paused'}}")
+                page.click('#captureRefresh');expect(page.locator('#captureNativeControls')).to_be_visible()
+                expect(page.locator('#captureNativeEnable')).to_be_disabled()
+                assert not page.is_checked('#captureNativeConsent')
+                assert page.evaluate("__fixture.requests.filter(r=>r.path==='/api/capture/native').length")==0
+                page.check('#captureNativeConsent');page.click('#captureNativeEnable')
+                expect(page.locator('#captureStateTitle')).to_have_text('Codex capture is running')
+                expect(page.locator('#captureNativePause')).to_be_visible()
+                assert not page.is_checked('#captureNativeConsent')
+                page.click('#capturePause');page.click('#actionAccept')
+                expect(page.locator('#captureNativeState')).to_have_text('Paused')
+                expect(page.locator('#captureNativeEnable')).to_be_disabled()
+                assert page.evaluate("__fixture.requests.filter(r=>r.path==='/api/capture/review').length")==0
+                page.evaluate("__fixture.captures[1].text='Synthetic  captured prompt 1';window.__reviewBefore=JSON.stringify(__fixture.captures)")
+                page.click('#captureReview');expect(page.locator('#captureReviewPanel')).to_be_visible()
+                expect(page.locator('#captureReviewList article')).to_have_count(5)
+                expect(page.locator('#captureReviewList')).to_contain_text('Extra spaces between words')
+                assert page.evaluate('JSON.stringify(__fixture.captures)===window.__reviewBefore')
+                assert page.evaluate('window.__fixture.aiCalls||0')==0
+                page.click('#captureReviewClose');expect(page.locator('#captureReviewList article')).to_have_count(0)
+                page.evaluate('window.__fixture.captures=[]')
+                passed('Capture home bounds previews, treats saved text as data, fits mobile, requires native source consent and pauses actual sources')
+                passed('Recent wording review runs only on request, uses bounded local checks and preserves raw captures without cloud AI')
+            page.locator('#mainNav [data-filter="all"]').click();page.click('#demoButton');expect(cards()).to_have_count(9)
             assert page.input_value('#passphrase') == ''
             passed('Setup, sample prompts, and password-field clearing')
             page.click('#settingsNav')
@@ -129,7 +179,7 @@ def main():
                 passed('v0.7 inspector, adaptive list and focus mode')
 
             if args.mode == 'fixture':
-                page.click('#writingNav')
+                page.click('#moreNav');page.click('#writingNav')
                 expect(page.locator('#writingView')).to_be_visible()
                 page.fill('#styleName','Product updates tone')
                 page.fill('#styleSamples',"I'm writing product updates. I don't add hype!\n\n---\n\nI care about users and careful details.")
@@ -193,7 +243,7 @@ def main():
                 expect(page.locator('#gate')).to_be_visible()
                 assert page.input_value('#styleTask')=='' and page.input_value('#styleInstructions')=='', 'Lock must remove writing text from hidden DOM'
                 unlock()
-                page.click('#writingNav')
+                page.click('#moreNav');page.click('#writingNav')
                 expect(page.locator('#styleCount')).to_have_text('2')
                 page.locator('.writing-profile').filter(has_text='Product updates tone').click()
                 expect(page.locator('#styleTone')).to_have_value('Brief, natural and direct')
@@ -304,7 +354,7 @@ def main():
             page.click('#settingsNav');page.evaluate('window.scrollTo(0,0);document.activeElement?.blur()')
             page.screenshot(path=str(output/'privacy-settings.png'),full_page=True)
             if args.mode=='fixture':
-                page.click('#writingNav')
+                page.click('#moreNav');page.click('#writingNav')
                 expect(page.locator('#writingView')).to_be_visible()
                 page.locator('.writing-profile').first.click()
                 page.screenshot(path=str(output/'writing-desktop.png'),full_page=True)
@@ -327,6 +377,14 @@ def main():
             page.click('#findRelated')
             expect(page.locator('#recallPanel')).to_be_visible()
             expect(page.locator('#recallResults')).to_contain_text('Synthetic React authentication source')
+            source_result=page.locator('.recall-result').filter(has_text='Synthetic React authentication source')
+            expect(source_result).to_contain_text('Why shown: local keyword overlap')
+            expect(source_result.get_by_role('button',name='Copy exact saved wording without changing this draft')).to_be_visible()
+            expect(source_result.get_by_role('button',name='Add this saved prompt to the current draft')).to_be_visible()
+            source_result.locator('select').select_option('not-useful')
+            source_result.get_by_role('button',name='Save feedback for this saved revision').click()
+            expect(page.locator('.recall-result').filter(has_text='Synthetic React authentication source')).to_contain_text('Your feedback on revision 1: not useful')
+            passed('Related result explains keyword match and saves revision-bound outcome feedback')
             invoke('/api/items/'+source['id'],'PUT',{
                 'title':source['title'],'body':'Review React authentication flow and preserve updated tests',
                 'kind':source['kind'],'project':source['project'],'tags':source['tags'],
@@ -339,9 +397,42 @@ def main():
             page.locator('.recall-result').filter(has_text='Synthetic React authentication source').get_by_role('button',name='Add this saved prompt to the current draft').click()
             expect(page.locator('#entryBody')).to_have_value(re.compile('preserve updated tests'))
             expect(page.locator('#recallPanel')).not_to_be_visible()
+            page.fill('#entryBody','Review React auth flow with tests')
+            page.fill('#entryProject','')
+            page.click('#findRelated')
+            page.locator('.recall-result').filter(has_text='Synthetic React authentication source').get_by_role('button',name='Set this draft project to the selected source project').click()
+            expect(page.locator('#entryProject')).to_have_value('Recall QA')
+            expect(page.locator('#recallPanel')).not_to_be_visible()
+            passed('Project is suggested from a source only after an explicit correction click')
+            page.click('#findRelated')
+            source_result=page.locator('.recall-result').filter(has_text='Synthetic React authentication source')
+            source_result.locator('select').select_option('hidden')
+            source_result.get_by_role('button',name='Save feedback for this saved revision').click()
+            expect(page.locator('.recall-result').filter(has_text='Synthetic React authentication source')).to_have_count(0)
+            passed('Hidden feedback removes this revision from related results without deleting its library source')
             page.click('#cancelDialog');page.click('#actionAccept')
             expect(page.locator('#editorDialog')).not_to_be_visible()
             passed('Explicit vault recall adds a reviewed source to the draft and clears results')
+
+            page.fill('#searchInput','Synthetic React authentication source')
+            page.locator('.item-card').filter(has_text='Synthetic React authentication source').locator('.wb-title').click()
+            expect(page.locator('#wbFeedback select')).to_have_value('hidden')
+            page.locator('#wbFeedback select').select_option('')
+            page.locator('#wbFeedback').get_by_role('button',name='Save or clear feedback for this version').click()
+            expect(page.locator('#wbFeedback select')).to_have_value('')
+            passed('Inspector can undo hidden feedback without deleting or editing the saved source')
+            page.fill('#searchInput','')
+
+            if args.mode=='fixture':
+                page.evaluate('''()=>__fixture.captures.push({id:'synthetic-capture',deviceId:'browser-extension',
+                  recordedAt:new Date().toISOString(),surface:{appId:'chatgpt.com',title:''},
+                  text:'Synthetic captured prompt',quality:'draft_snapshot',sourceMethod:'editor_snapshot'})''')
+                page.locator('#mainNav [data-filter="captured"]').click()
+                receipt=page.locator('.capture-receipt')
+                expect(receipt).to_contain_text('Browser helper')
+                expect(receipt).to_contain_text('delivery is unverified')
+                expect(page.locator('.item-card')).to_contain_text('Synthetic captured prompt')
+                passed('Captured record shows a source, quality and deletion receipt without claiming delivery')
 
             page.locator('#mainNav [data-filter="all"]').click();expect(cards()).to_have_count(20)
             if args.mode=='fixture':
@@ -355,6 +446,7 @@ def main():
                 expect(page.locator('#gate')).to_be_visible()
                 assert page.input_value('#entryBody')==''
                 unlock(replacement)
+                page.locator('#mainNav [data-filter="all"]').click()
                 expect(page.locator('#draftRecovery')).to_be_visible()
                 page.get_by_role('button',name='Recover encrypted draft as a new prompt').click()
                 expect(page.locator('#entryBody')).to_have_value('Synthetic draft that should recover after a vault lock')
@@ -368,6 +460,9 @@ def main():
                 page.evaluate('window.__fixture.delayItems=0')
             else: page.click('#lockButton')
             expect(page.locator('#gate')).to_be_visible();expect(cards()).to_have_count(0)
+            expect(page.locator('#captureRecentList article')).to_have_count(0)
+            expect(page.locator('#captureReviewList article')).to_have_count(0)
+            assert not page.is_checked('#captureNativeConsent')
             assert page.input_value('#entryBody')=='' and page.input_value('#searchInput')==''
             passed('Lock purges decrypted DOM' + (' and discards late responses' if args.mode=='fixture' else ''))
             unlock(replacement)

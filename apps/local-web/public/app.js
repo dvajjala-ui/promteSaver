@@ -14,7 +14,7 @@ import { initAssistant } from './assistant.js';
   const token = session.get();
   let PAGE_SIZE = 40;
   const LABELS = {
-    all: ['All prompts', 'Everything worth keeping, in one place.'],
+    all: ['Prompt history', 'Your saved prompts and editable copies, ready to find and reuse.'],
     pinned: ['Pinned favorites', 'The instructions you reach for most often.'],
     templates: ['Templates', 'Your reusable instructions, ready to adapt.'],
     recent: ['Recently used', 'Prompts you have copied and reused.'],
@@ -26,7 +26,7 @@ import { initAssistant } from './assistant.js';
   let wbItem=null,wbRequest=0,wbLayout='cards',wbVisible=true,wbFocus=false;
   let searchTimer; let queryCounter = 0; let quickCounter = 0; let recallRequest = 0; let toastTimer;
   let quickItems = []; let quickIndex = 0; let templateItem = null;
-  let templateFields = []; let backupMode = 'export'; let importFile = null;
+  let templateFields = []; let backupMode = 'export'; let importFile = null; let retentionReview = null;
   let sessionEpoch = 0; let uiUnlocked = false; let deadlineTimer; let statusTimer;
   let serverDeadline = 0; let latestServerTime = 0; let localDeadline = 0;
   let preferences = {idleMinutes:15,lowMemory:false,compactMode:false,lockOnHide:false};
@@ -34,6 +34,7 @@ import { initAssistant } from './assistant.js';
   let backupReviewed = false; let pendingBackupData = null;
   let activeDraftId = null; let draftTimer = null; let draftQueue = Promise.resolve(); let savedDraftIds = new Set();
   let authAttempt = 0; let runtimeReport = null;
+  let captureRequest = 0, captureReviewRequest = 0;
   let channel = null;
   try { if(typeof BroadcastChannel==='function')channel=new BroadcastChannel('promtesaver-vault'); } catch { /* Deadline checks still work without inter-tab messaging. */ }
   // Writing DNA is fully opt-in and loaded only when the user opens Writing Studio.
@@ -204,12 +205,13 @@ import { initAssistant } from './assistant.js';
     if (at) applyDeadline(at, Number(response.headers.get('X-Vault-Now')));
     return body;
   }
-  const assistant=initAssistant({api,notice,unlocked:()=>uiUnlocked,refresh,settings:()=>chooseSection('settings')});
+  const assistant=initAssistant({api,notice,unlocked:()=>uiUnlocked,refresh,settings:()=>{chooseSection('more');$('groqTitle').scrollIntoView({block:'start'});}});
   function showGate(locked) {
     assistant.reset();
     resetRecall();
+    resetRetentionReview();
     answerDialog(false);
-    uiUnlocked = false; sessionEpoch++; queryCounter++; quickCounter++;
+    uiUnlocked = false; sessionEpoch++; queryCounter++; quickCounter++; captureRequest++; captureReviewRequest++;
     runtimeReport=null;$('healthExport').disabled=true;
     for(const id of ['healthMemory','healthProfile','healthStorage','healthRuntime'])$(id).textContent='Not checked';
     $('healthRuntimeNote').textContent='Source beta, not a signed installer';
@@ -222,6 +224,11 @@ import { initAssistant } from './assistant.js';
     styleGeneration++;styleLoadGeneration++;proofGeneration++;activeStyle=null;activeStyleId=null;activeStyleETag=null;styleWork=null;styleAnalyzedSamples='';styleSavedFields='';
     wbClear(); wbFocus=false; wbVisible=true; wbMode();
     $('shell').hidden = true; $('gate').hidden = false;
+    $('captureRecentList').replaceChildren();$('captureRecentCount').textContent='';
+    $('captureStateTitle').textContent='Vault locked';$('captureStateDescription').textContent='Unlock to review capture status.';
+    $('capturePause').disabled=true;$('captureSetup').hidden=true;
+    $('captureNativeConsent').checked=false;$('captureNativeEnable').disabled=true;$('captureNativeControls').hidden=true;
+    $('captureReviewPanel').hidden=true;$('captureReviewList').replaceChildren();$('captureReviewStatus').textContent='';$('captureReview').disabled=false;
     $('writingView').hidden = true;
     for (const id of ['editorDialog','historyDialog','quickDialog','templateDialog','backupDialog','passphraseDialog']) {
       const dialog = $(id); if (dialog.open) dialog.close();
@@ -256,8 +263,9 @@ import { initAssistant } from './assistant.js';
   async function showApp() {
     uiUnlocked = true; $('gate').hidden = true; $('shell').hidden = false; wbMode();
     $('passphrase').value=''; $('confirm').value='';
-    $('settingsView').hidden=true; $('writingView').hidden=true; $('libraryView').hidden=false; $('settingsNav').classList.remove('active');$('writingNav').classList.remove('active');
+    $('settingsView').hidden=true; $('writingView').hidden=true; $('libraryView').hidden=true; $('captureView').hidden=false;$('moreView').hidden=true; $('settingsNav').classList.remove('active');$('writingNav').classList.remove('active');
     section = 'all'; pageOffset=0; await loadPreferences(); await refresh(); await loadDrafts();
+    if(uiUnlocked)chooseSection('capture');
     clearInterval(statusTimer); statusTimer=setInterval(() => void checkSession(),30000);
   }
   async function refresh() {
@@ -297,8 +305,8 @@ import { initAssistant } from './assistant.js';
   function updateNav() {
     const [title, description] = LABELS[section];
     $('sectionTitle').textContent = title; $('sectionDescription').textContent = description;
-    $('crumbName').textContent = title;
-    document.querySelectorAll('[data-filter]').forEach(b => b.classList.toggle('active', b.dataset.filter === section));
+    if(!$('libraryView').hidden)$('crumbName').textContent = title;
+    document.querySelectorAll('[data-filter]').forEach(b => b.classList.toggle('active', !$('libraryView').hidden && b.dataset.filter === section));
     const special = section === 'captured' || section === 'trash';
     $('filterPills').hidden = section === 'captured' || section === 'recent' || section === 'trash';
     document.querySelector('.advanced-filters').hidden = special;
@@ -315,9 +323,8 @@ import { initAssistant } from './assistant.js';
     try {
       let result;
       if (section === 'captured') {
-        result = await api('/api/captured');
-        result.items = result.items.filter(item => !text || `${item.text} ${item.surface?.appId}`.toLowerCase().includes(text.toLowerCase()));
-        result.total = result.items.length;
+        const params=new URLSearchParams({q:text,limit:String(PAGE_SIZE),offset:String(pageOffset)});
+        result = await api(`/api/captured?${params}`);
       } else result = await api(`/api/items?${queryParams(pageOffset)}`);
       if (request !== queryCounter) return;
       if (!result.items.length && result.total && pageOffset >= result.total) {
@@ -331,8 +338,8 @@ import { initAssistant } from './assistant.js';
     const list = $('itemsList'); list.replaceChildren(); list.dataset.layout=wbLayout;
     const pendingCards = document.createDocumentFragment();
     $('listInfo').textContent = `${total ? pageOffset+1 : 0}-${pageOffset+currentItems.length} of ${total} ${section === 'trash' ? 'deleted' : section === 'captured' ? 'captured' : 'saved'} items`;
-    $('loadMoreButton').hidden = pageOffset+currentItems.length >= total || section === 'captured';
-    $('previousPage').hidden=pageOffset === 0 || section === 'captured';
+    $('loadMoreButton').hidden = pageOffset+currentItems.length >= total;
+    $('previousPage').hidden=pageOffset === 0;
     $('selectionRow').hidden=section==='captured' || !currentItems.length;
     updateSelection();
     $('emptyState').hidden = currentItems.length !== 0;
@@ -340,7 +347,7 @@ import { initAssistant } from './assistant.js';
       const search = $('searchInput').value.trim();
       $('emptyTitle').textContent = search ? 'No matches yet.' : section === 'captured' ? 'No captured prompts.' : section === 'trash' ? 'Nothing in trash.' : 'A fresh start.';
       $('emptyDescription').textContent = search ? 'Try a different search, project or tag filter.' : section === 'captured' ?
-        'Real background collection is disabled in this preview.' : section === 'trash' ?
+        'Connect an approved source from Capture, send a test prompt, then refresh. Original snapshots appear here.' : section === 'trash' ?
         'Deleted items will stay here until you permanently remove them.' : 'Save your first prompt or explore some starter templates.';
       $('demoButton').hidden = section !== 'all' || Boolean(search) || Boolean($('projectFilter').value) || Boolean($('tagFilter').value);
       $('emptyNew').hidden = section === 'trash' || section === 'captured';
@@ -372,6 +379,12 @@ import { initAssistant } from './assistant.js';
       const text = captured ? item.text : item.body;
       const previewLimit=preferences.lowMemory?420:1600;
       card.append(node('p', 'card-body', text.length>previewLimit?text.slice(0,previewLimit)+'...':text));
+      if(captured){
+        const browser=item.deviceId==='browser-extension';
+        const meaning=item.quality==='draft_snapshot'?'Composer snapshot near Send; delivery is unverified.':
+          item.quality==='exact_submitted'?'Submission text from a direct source hook.':'Partial capture; check for missing text.';
+        card.append(node('p','capture-receipt',`Capture receipt · ${browser?'Browser helper':item.deviceId} · ${item.sourceMethod.replaceAll('_',' ')} · ${localDate(item.recordedAt)}. ${meaning} You can delete this record below; linked editable copies are removed with it.`));
+      }
       if (!captured && item.notes) card.append(node('p', 'card-note', item.notes));
       const tags = node('div', 'card-tags');
       if (!captured && item.project) tags.append(node('span', '', '◇ ' + item.project));
@@ -431,9 +444,28 @@ import { initAssistant } from './assistant.js';
     const result = await api(`/api/items/${item.id}`);
     return result.item;
   }
-  function wbClear(){wbRequest++;wbItem=null;for(const id of ['wbKind','wbTitle','wbMeta','wbBody','wbProject','wbSource','wbDate']){if($(id))$(id).textContent='';}if($('wbTags'))$('wbTags').replaceChildren();if($('wbDetail'))$('wbDetail').hidden=true;if($('wbEmpty'))$('wbEmpty').hidden=false;document.querySelectorAll('.item-card.wb-selected').forEach(e=>e.classList.remove('wb-selected'));}
-  function wbMode(){if(!$('wbInspector'))return;const library=uiUnlocked&&$('writingView').hidden&&$('settingsView').hidden;const show=library&&wbVisible&&!wbFocus;$('shell').classList.toggle('wb-inspector-visible',show);$('shell').classList.toggle('wb-focus',wbFocus);$('wbInspector').inert=!show;$('wbInspector').setAttribute('aria-hidden',String(!show));$('inspectorToggle').setAttribute('aria-pressed',String(wbVisible));$('focusToggle').setAttribute('aria-pressed',String(wbFocus));$('cardLayout').setAttribute('aria-pressed',String(wbLayout==='cards'));$('listLayout').setAttribute('aria-pressed',String(wbLayout==='list'));}
-  async function wbInspect(preview){if(!uiUnlocked)return;const req=++wbRequest,epoch=sessionEpoch;try{const item=await completeItem(preview);if(!uiUnlocked||epoch!==sessionEpoch||req!==wbRequest)return;wbItem=item;wbFocus=false;wbVisible=true;wbMode();$('wbEmpty').hidden=true;$('wbDetail').hidden=false;$('wbKind').textContent=item.kind==='template'?'TEMPLATE':'SAVED PROMPT';$('wbTitle').textContent=item.title;$('wbMeta').textContent=`${item.useCount||0} uses · ${item.body.length.toLocaleString()} characters`;$('wbBody').textContent=item.body.slice(0,6000)+(item.body.length>6000?'\n… Open editor to view full content.':'');$('wbProject').textContent=item.project||'Unassigned';$('wbSource').textContent=item.source||'Manual';$('wbDate').textContent=localDate(item.updatedAt);$('wbTags').replaceChildren(...item.tags.map(tag=>node('span','',`#${tag}`)));document.querySelectorAll('.item-card').forEach(card=>card.classList.toggle('wb-selected',card.dataset.itemId===item.id));$('shell').classList.add('wb-inspector-open');}catch(error){if(req===wbRequest&&uiUnlocked){wbClear();notice(error.message);}}}
+  function wbClear(){wbRequest++;wbItem=null;for(const id of ['wbKind','wbTitle','wbMeta','wbBody','wbProject','wbSource','wbDate']){if($(id))$(id).textContent='';}if($('wbTags'))$('wbTags').replaceChildren();if($('wbFeedback'))$('wbFeedback').replaceChildren();if($('wbDetail'))$('wbDetail').hidden=true;if($('wbEmpty'))$('wbEmpty').hidden=false;document.querySelectorAll('.item-card.wb-selected').forEach(e=>e.classList.remove('wb-selected'));}
+  function wbMode(){if(!$('wbInspector'))return;const library=uiUnlocked&&!$('libraryView').hidden;const show=library&&wbVisible&&!wbFocus;$('shell').classList.toggle('wb-inspector-visible',show);$('shell').classList.toggle('wb-focus',wbFocus);$('wbInspector').inert=!show;$('wbInspector').setAttribute('aria-hidden',String(!show));$('inspectorToggle').hidden=!library;$('focusToggle').hidden=!library;$('inspectorToggle').setAttribute('aria-pressed',String(wbVisible));$('focusToggle').setAttribute('aria-pressed',String(wbFocus));$('cardLayout').setAttribute('aria-pressed',String(wbLayout==='cards'));$('listLayout').setAttribute('aria-pressed',String(wbLayout==='list'));}
+  async function wbInspect(preview){if(!uiUnlocked)return;const req=++wbRequest,epoch=sessionEpoch;try{const item=await completeItem(preview);if(!uiUnlocked||epoch!==sessionEpoch||req!==wbRequest)return;wbItem=item;wbFocus=false;wbVisible=true;wbMode();$('wbEmpty').hidden=true;$('wbDetail').hidden=false;$('wbKind').textContent=item.kind==='template'?'TEMPLATE':'SAVED PROMPT';$('wbTitle').textContent=item.title;$('wbMeta').textContent=`${item.useCount||0} uses · ${item.body.length.toLocaleString()} characters`;$('wbBody').textContent=item.body.slice(0,6000)+(item.body.length>6000?'\n… Open editor to view full content.':'');$('wbProject').textContent=item.project||'Unassigned';$('wbSource').textContent=item.source||'Manual';$('wbDate').textContent=localDate(item.updatedAt);$('wbTags').replaceChildren(...item.tags.map(tag=>node('span','',`#${tag}`)));showInspectorFeedback(item);document.querySelectorAll('.item-card').forEach(card=>card.classList.toggle('wb-selected',card.dataset.itemId===item.id));$('shell').classList.add('wb-inspector-open');}catch(error){if(req===wbRequest&&uiUnlocked){wbClear();notice(error.message);}}}
+  function showInspectorFeedback(item){
+    let holder=$('wbFeedback');
+    if(!holder){holder=node('div','wb-feedback');holder.id='wbFeedback';$('wbTags').after(holder);}
+    holder.replaceChildren();
+    const label=node('label','',`Outcome for revision ${item.revision}`),select=node('select');
+    for(const [value,text] of [['','No feedback'],['worked','Worked well'],['not-useful','Not useful'],['hidden','Hidden from related search']])
+      select.append(new Option(text,value));
+    select.value=item.feedback||'';label.append(select);
+    const save=button('Save feedback','Save or clear feedback for this version',async()=>{
+      const request=wbRequest,epoch=sessionEpoch;save.disabled=true;
+      try{
+        const result=await api(`/api/items/${item.id}/feedback`,'POST',{revision:item.revision,feedback:select.value||null},item.etag);
+        if(request!==wbRequest||epoch!==sessionEpoch||!uiUnlocked)return;
+        wbItem=result.item;showInspectorFeedback(result.item);
+        notice('Feedback updated for this version. Hidden items remain in your library.');
+      }catch(error){if(request===wbRequest&&uiUnlocked){notice(error.message);save.disabled=false;}}
+    },'btn subtle');
+    holder.append(label,save);
+  }
   async function copyText(content, item) {
     try { await navigator.clipboard.writeText(content); }
     catch {
@@ -552,8 +584,10 @@ import { initAssistant } from './assistant.js';
         detail.append(node('strong','',match.title));
         detail.append(node('small','',`${match.provenance} · ${match.project||'Unassigned'} · ${match.source||'Manual'} · ${localDate(match.updatedAt)}`));
         detail.append(node('p','',match.preview));
-        detail.append(node('small','',`Matched: ${match.matchedTerms.join(', ')}`));
-        const addButton=button('Add to draft','Add this saved prompt to the current draft',async()=>{
+        detail.append(node('small','',`Why shown: local keyword overlap (${match.matchedTerms.join(', ')}). Check whether the source fits this task.`));
+        if(match.scope)detail.append(node('small','',`Reuse scope: ${match.scope}. Original source wording is retained in this copy.`));
+        if(match.feedback)detail.append(node('small','',`Your feedback on revision ${match.revision}: ${match.feedback.replace('-', ' ')}.`));
+        const addButton=button('Add editable copy','Add this saved prompt to the current draft',async()=>{
           if(addButton.disabled)return;
           addButton.disabled=true;
           const selected=recallRequest,selectionEpoch=sessionEpoch;
@@ -569,7 +603,38 @@ import { initAssistant } from './assistant.js';
           }catch(error){if(uiUnlocked)notice(error.message);}
           finally{addButton.disabled=false;}
         },'btn outline');
-        row.append(detail,addButton);
+        const controls=node('div','recall-controls');controls.append(addButton);
+        controls.append(button('Copy exact original','Copy exact saved wording without changing this draft',async()=>{
+          const selected=recallRequest,selectionEpoch=sessionEpoch;
+          try{
+            const {item}=await api(`/api/items/${match.id}`);
+            if(selected!==recallRequest||selectionEpoch!==sessionEpoch||!uiUnlocked||!$('editorDialog').open)return;
+            if(item.deletedAt||item.etag!==match.etag){resetRecall();notice('That saved prompt changed. Search again before copying it.');return;}
+            await copyText(item.body,item);
+          }catch(error){if(uiUnlocked)notice(error.message);}
+        },'btn subtle'));
+        if(match.project && match.project!==$('entryProject').value.trim())
+          controls.append(button(`Use ${match.project}`,'Set this draft project to the selected source project',()=>{
+            $('entryProject').value=match.project;resetRecall();scheduleDraft();
+            notice(`Draft project set to ${match.project}. Review it before saving.`);
+          },'btn subtle'));
+        const feedbackLabel=node('label','recall-feedback-label','Outcome for this revision');
+        const feedbackSelect=node('select');
+        for(const [value,label] of [['','No feedback'],['worked','Worked well'],['not-useful','Not useful'],['hidden','Hide from related search']])
+          feedbackSelect.append(new Option(label,value));
+        feedbackSelect.value=match.feedback||'';feedbackLabel.append(feedbackSelect);
+        const feedbackButton=button('Save feedback','Save feedback for this saved revision',async()=>{
+          feedbackButton.disabled=true;
+          try{
+            await api(`/api/items/${match.id}/feedback`,'POST',{revision:match.revision,feedback:feedbackSelect.value||null},match.etag);
+            if(request!==recallRequest||epoch!==sessionEpoch||!uiUnlocked||!$('editorDialog').open)return;
+            notice('Feedback saved for this version. It is not treated as proof that a suggestion succeeded.');
+            await findRelated();
+          }catch(error){if(uiUnlocked){notice(error.message);if(error.status===412)resetRecall();}}
+          finally{feedbackButton.disabled=false;}
+        },'btn subtle');
+        controls.append(feedbackLabel,feedbackButton);
+        row.append(detail,controls);
         $('recallResults').append(row);
       }
     }catch(error){if(request===recallRequest&&uiUnlocked)$('recallStatus').textContent=error.message;}
@@ -625,9 +690,14 @@ import { initAssistant } from './assistant.js';
       void ask('Discard unsaved writing profile changes? Your sample text has not been saved.', {title:'Leave Writing Studio'}).then(accepted=>{if(accepted)chooseSection(next,true);});
       return;
     }
-    $('writingView').hidden=next!=='writing';$('settingsView').hidden=next!=='settings';$('libraryView').hidden=next==='writing'||next==='settings';wbClear();wbMode();
+    $('writingView').hidden=next!=='writing';$('settingsView').hidden=next!=='settings';$('captureView').hidden=next!=='capture';$('moreView').hidden=next!=='more';$('libraryView').hidden=['writing','settings','capture','more'].includes(next);wbClear();wbMode();
     $('settingsNav').classList.toggle('active',next==='settings');$('writingNav').classList.toggle('active',next==='writing');
-    if(next==='writing'){
+    $('captureNav').classList.toggle('active',next==='capture');$('moreNav').classList.toggle('active',next==='more');
+    if(next==='capture'||next==='more'){
+      $('crumbName').textContent=next==='capture'?'Capture':'More features';document.querySelectorAll('[data-filter]').forEach(el=>el.classList.remove('active'));
+      if(next==='capture')void loadCaptureHome();
+      else void assistant.loadSettings();
+    }else if(next==='writing'){
       $('crumbName').textContent='Writing Studio';$('mainNav').querySelectorAll('[data-filter]').forEach(el=>el.classList.remove('active'));
       void loadStyleProfiles();
     }else if(next==='settings'){
@@ -636,6 +706,83 @@ import { initAssistant } from './assistant.js';
     }else{
       section=next;$('searchInput').value='';$('projectFilter').value='';$('tagFilter').value='';$('sortFilter').value='updated';void loadItems();
     }
+  }
+  async function loadCaptureHome() {
+    if(!uiUnlocked)return;
+    const request=++captureRequest;
+    $('captureRefresh').disabled=true;
+    try{
+      const [status,recent]=await Promise.all([api('/api/capture/status'),api('/api/captured?limit=5&offset=0')]);
+      if(request!==captureRequest||!uiUnlocked)return;
+      const paired=!!status.browser?.paired,authorized=!!status.browser?.authorized;
+      const native=status.native||{},nativeRunning=native.state==='running';
+      const state=status.state||'unpaired';
+      $('captureIndicator').dataset.state=state;
+      const labels={ready:'Capture pairing ready',paused:'Browser capture paused',unpaired:'Connect your first capture source',locked:'Vault locked'};
+      $('captureStateTitle').textContent=nativeRunning?'Codex capture is running':native.state==='error'&&!authorized?'Codex capture needs attention':native.available&&state==='unpaired'?'Choose a source to start capturing':labels[state]||'Capture setup needed';
+      $('captureStateDescription').textContent=nativeRunning?
+        'New user prompts from local Codex session files are saved automatically while this source is enabled and the vault remains unlocked. Other desktop applications are not captured.':state==='ready'?
+        'Browser access is paired and approved. Enable each chosen site in the helper, then confirm a saved acknowledgement with a test prompt.':
+        state==='paused'?'The helper has no approved automatic capture sources. Set up a new pairing to approve send snapshots.':
+        state==='locked'?'Unlock the vault and pair again to capture.':native.available?
+        'Enable Codex capture below, or connect a browser source. Each source needs your approval and can be paused at any time.':
+        'Browser capture needs pairing and per-site permission. Desktop application capture is still in development.';
+      $('captureNavState').textContent=nativeRunning?'running':state==='ready'?'paired':state==='paused'?'paused':'setup';
+      $('capturePause').disabled=!paired&&!native.enabled;
+      $('captureSetupButton').textContent=paired&&authorized?'Manage browser setup':'Set up browser capture';
+      const hosts=Array.isArray(status.browser?.hosts)?status.browser.hosts.filter(host=>['chatgpt.com','claude.ai','gemini.google.com'].includes(host)):[];
+      $('captureBrowserDetail').textContent=paired?`${authorized?'Approved':'Manual-only'} pairing${hosts.length?' · '+hosts.join(', '):''}. Site approval is managed in the helper.`:'Not paired. Connect the helper and approve each site.';
+      const nativeLabels={running:'Capturing new Codex prompts',starting:'Starting source',paused:'Paused',error:'Source needs attention',unavailable:'Coming soon'};
+      $('captureNativeState').textContent=nativeLabels[native.state]||(native.available?'Ready to enable':'Coming soon');
+      $('captureNativeDetail').textContent=!native.available?'Real Codex capture is disabled until private-session exclusions are verified. Other desktop applications are not captured.':
+        native.state==='error'?'The local Codex source could not run. Pause it and try again after checking the source. No failed messages are queued.':
+        nativeRunning?'Watching for new user prompts in local Codex session files. Existing history is excluded. Other apps and unsent typing are not recorded.':
+        'Approve this source to save new user prompts from local Codex session files. Other apps and unsent typing are not recorded.';
+      $('captureNativeControls').hidden=!native.available;
+      $('captureNativeConsentWrap').hidden=!!native.enabled;$('captureNativeEnable').hidden=!!native.enabled;$('captureNativePause').hidden=!native.enabled;
+      if(native.enabled){$('captureNativeConsent').checked=false;$('captureNativeEnable').disabled=true;}
+      const items=Array.isArray(recent.items)?recent.items.slice(0,5):[];
+      $('captureRecentCount').textContent=Number.isFinite(recent.total)?`(${recent.total.toLocaleString()})`:'';
+      const list=$('captureRecentList');list.replaceChildren();$('captureEmpty').hidden=items.length>0;
+      for(const item of items){
+        const row=node('article','capture-recent-row');
+        row.append(node('span','capture-record-mark','↳'));
+        const detail=node('div');detail.append(node('h3','',item.surface?.title||item.surface?.appId||'Captured prompt'));
+        const text=typeof item.text==='string'?item.text:'';
+        detail.append(node('p','',text.slice(0,420)+(text.length>420?'…':'')));
+        detail.append(node('small','',`${item.surface?.appId||'Source'} · ${localDate(item.recordedAt)} · ${String(item.quality||'snapshot').replaceAll('_',' ')}${item.quality==='draft_snapshot'?' · Delivery unverified':''}`));
+        row.append(detail);list.append(row);
+      }
+    }catch(error){
+      if(request===captureRequest&&uiUnlocked){$('captureStateTitle').textContent='Capture status unavailable';$('captureStateDescription').textContent=error.status===404?'Restart the application after updating to load capture status.':error.message;$('capturePause').disabled=true;}
+    }finally{if(request===captureRequest)$('captureRefresh').disabled=false;}
+  }
+  function openCaptureSetup(){
+    chooseSection('capture');$('captureSetup').hidden=false;
+    void loadBridgeStatus();
+    $('captureSetupTitle').focus();$('captureSetup').scrollIntoView({block:'start',behavior:preferences.lowMemory?'instant':'smooth'});
+  }
+  async function reviewCaptures(){
+    const request=++captureReviewRequest;
+    $('captureReview').disabled=true;$('captureReviewPanel').hidden=false;$('captureReviewList').replaceChildren();$('captureReviewStatus').textContent='Checking the five most recent snapshots locally…';
+    $('captureReviewTitle').focus();$('captureReviewPanel').scrollIntoView({block:'start'});
+    try{
+      const result=await api('/api/capture/review?limit=5&offset=0');
+      if(request!==captureReviewRequest||!uiUnlocked)return;
+      const items=Array.isArray(result.items)?result.items.slice(0,5):[];
+      $('captureReviewStatus').textContent=items.length?`Reviewed ${items.length} recent snapshot${items.length===1?'':'s'}. Originals remain unchanged.${result.more?' More snapshots are available in Original captures.':''}`:'No captured prompts to review yet.';
+      for(const item of items){
+        const row=node('article','capture-recent-row');const detail=node('div');
+        detail.append(node('h3','',item.source||'Captured prompt'));
+        const text=typeof item.text==='string'?item.text:'';detail.append(node('p','',text.slice(0,420)+(text.length>420?'…':'')));
+        const issues=Array.isArray(item.suggestions)?item.suggestions:[];
+        if(item.checkSkipped)detail.append(node('small','','This prompt exceeds the local check limit and was left unchanged.'));
+        else if(!issues.length)detail.append(node('small','','No suggestions from these basic checks. This does not guarantee correct grammar.'));
+        else{const list=node('ul','capture-review-suggestions');for(const issue of issues.slice(0,5))list.append(node('li','',issue.message||'Review wording.'));detail.append(list);if(issues.length>5)detail.append(node('small','',`${issues.length-5} additional suggestions are omitted from this preview.`));}
+        row.append(detail);$('captureReviewList').append(row);
+      }
+    }catch(error){if(request===captureReviewRequest&&uiUnlocked)$('captureReviewStatus').textContent=error.message;}
+    finally{if(request===captureReviewRequest)$('captureReview').disabled=false;}
   }
   async function lock(force = false) {
     if (!force && editorDirty() && !(await ask('Lock now? A successfully autosaved draft can be recovered after unlocking.'))) return;
@@ -683,13 +830,14 @@ import { initAssistant } from './assistant.js';
       const result = await api('/api/bridge/status');
       $('bridgeStatus').textContent = result.active ?
         `Helper paired (write-only) until ${new Date(result.expiresAt).toLocaleTimeString()}. Revoke here or lock your vault.` :
-        'No browser helper is currently paired. Manual clipboard copy always works.';
+        'No browser helper is currently paired. Approve a source below, then pair the helper.';
     } catch (error) { $('bridgeStatus').textContent = error.message; }
   }
   async function generatePairing() {
     try {
       const result = await api('/api/bridge/start','POST',{autoCaptureHosts:$('bridgeAuto').checked?['chatgpt.com','claude.ai','gemini.google.com']:[]});
       $('pairCode').value = result.pairingCode; $('pairCodeWrap').hidden=false;
+      if(!$('captureView').hidden)void loadCaptureHome();
       notice('Code generated. Paste it into the browser extension within 10 minutes.');
     } catch (error) { notice(error.message); }
   }
@@ -698,6 +846,7 @@ import { initAssistant } from './assistant.js';
       await api('/api/bridge/revoke','POST',{});
       $('pairCodeWrap').hidden=true;$('pairCode').value='';
       await loadBridgeStatus();notice('Browser helper access revoked.');
+      if(!$('captureView').hidden)await loadCaptureHome();
     } catch (error) {notice(error.message);}
   }
   function openBackup(mode) {
@@ -978,10 +1127,41 @@ import { initAssistant } from './assistant.js';
     $('prefCompact').checked=value.compactMode;$('prefHide').checked=value.lockOnHide;
     $('idleLabel').textContent=`The vault locks after ${value.idleMinutes} minutes of inactivity. Decrypted content is cleared from this tab when it locks.`;
   }
+  function resetRetentionReview(message='No cleanup has been reviewed.') {
+    retentionReview=null;$('retentionApply').disabled=true;$('retentionStatus').textContent=message;
+  }
   async function loadPreferences(){applyPreferences(await api('/api/preferences'));}
   function clearPassphraseForm(){for(const id of ['currentPassphrase','newPassphrase','confirmNewPassphrase'])$(id).value='';$('passphraseError').textContent='';}
   function resetBackupReview(){backupReviewed=false;$('backupPreview').hidden=true;$('backupPreview').textContent='';if(backupMode==='import')$('doBackup').textContent='Preview restore';}
   function initActions() {
+    $('capturePairingSlot').append(document.querySelector('.bridge-panel'));
+    $('moreView').append(document.querySelector('.ai-connection'));
+    $('captureNav').addEventListener('click',()=>chooseSection('capture'));
+    $('moreNav').addEventListener('click',()=>chooseSection('more'));
+    for(const id of ['captureSetupButton','captureEmptySetup','tipButton'])$(id).addEventListener('click',openCaptureSetup);
+    $('captureSetupClose').addEventListener('click',()=>{$('captureSetup').hidden=true;$('captureSetupButton').focus();});
+    $('captureRefresh').addEventListener('click',()=>void loadCaptureHome());
+    $('captureReview').addEventListener('click',()=>void reviewCaptures());
+    $('captureReviewClose').addEventListener('click',()=>{captureReviewRequest++;$('captureReview').disabled=false;$('captureReviewPanel').hidden=true;$('captureReviewList').replaceChildren();$('captureReviewStatus').textContent='';$('captureReview').focus();});
+    for(const id of ['captureHistory','captureAll'])$(id).addEventListener('click',()=>chooseSection('captured'));
+    $('capturePause').addEventListener('click',async()=>{
+      if(!(await ask('Pause all capture sources? Browser pairing is revoked and the Codex source stops. Reconnect or approve each source again to resume.',{title:'Pause all capture',accept:'Pause all capture'})))return;
+      $('capturePause').disabled=true;
+      try{await api('/api/capture/pause','POST',{});$('pairCodeWrap').hidden=true;$('pairCode').value='';$('captureNativeConsent').checked=false;$('captureNativeEnable').disabled=true;await loadCaptureHome();notice('All capture sources paused.');}
+      catch(error){notice(error.message);await loadCaptureHome();}
+    });
+    $('captureNativeConsent').addEventListener('change',()=>{$('captureNativeEnable').disabled=!$('captureNativeConsent').checked;});
+    $('captureNativeEnable').addEventListener('click',async()=>{
+      if(!$('captureNativeConsent').checked)return;
+      $('captureNativeEnable').disabled=true;
+      try{await api('/api/capture/native','POST',{enabled:true,consent:true});$('captureNativeConsent').checked=false;await loadCaptureHome();}
+      catch(error){notice(error.message);if(uiUnlocked)$('captureNativeEnable').disabled=!$('captureNativeConsent').checked;}
+    });
+    $('captureNativePause').addEventListener('click',async()=>{
+      $('captureNativePause').disabled=true;
+      try{await api('/api/capture/native','POST',{enabled:false});await loadCaptureHome();notice('Codex capture paused.');}
+      catch(error){notice(error.message);}finally{$('captureNativePause').disabled=false;}
+    });
     $('refreshLibrary').addEventListener('click',async()=>{$('refreshLibrary').disabled=true;try{await refresh();}finally{$('refreshLibrary').disabled=false;}});
     $('topSettings').addEventListener('click',()=>chooseSection('settings'));
     $('cardLayout').addEventListener('click',()=>{wbLayout='cards';$('itemsList').dataset.layout='cards';wbMode();});
@@ -990,7 +1170,7 @@ import { initAssistant } from './assistant.js';
     $('focusToggle').addEventListener('click',()=>{wbFocus=!wbFocus;wbMode();notice(wbFocus?'Focus mode on':'Focus mode off');});
     $('wbClose').addEventListener('click',()=>{wbClear();wbVisible=false;wbMode();$('shell').classList.remove('wb-inspector-open');});
     $('assistantNav').addEventListener('click',()=>void assistant.open());
-    $('wbAi').addEventListener('click',()=>{if(wbItem)void assistant.open(wbItem.body,wbItem.title);});
+    $('wbAi').addEventListener('click',()=>{if(wbItem)void assistant.open(wbItem.body,wbItem.title,wbItem);});
     $('wbCopy').addEventListener('click',()=>{if(wbItem)void copyItem(wbItem);});
     $('wbEdit').addEventListener('click',()=>{if(wbItem)void openEditor(wbItem);});
     document.querySelectorAll('[data-pane]').forEach(b=>b.addEventListener('click',()=>{if($('writingView').hidden)return;const h=$(b.dataset.pane);h?.scrollIntoView({behavior:'smooth',block:'start'});document.querySelectorAll('[data-pane]').forEach(other=>other.classList.toggle('active',other===b));}));
@@ -1003,6 +1183,25 @@ import { initAssistant } from './assistant.js';
       try {applyPreferences(await api('/api/preferences','PUT',{idleMinutes:Number($('prefIdle').value),lowMemory:$('prefLowMemory').checked,compactMode:$('prefCompact').checked,lockOnHide:$('prefHide').checked}));
         pageOffset=0;await loadItems();$('preferencesNotice').textContent='Preferences saved in the encrypted vault.';}
       catch(error){if(uiUnlocked)$('preferencesNotice').textContent=error.message;}finally{$('savePreferences').disabled=false;}
+    });
+    $('retentionDays').addEventListener('change',()=>resetRetentionReview());
+    $('retentionPreview').addEventListener('click',async()=>{
+      resetRetentionReview('Checking captured snapshots…');$('retentionPreview').disabled=true;
+      try{
+        const review=await api('/api/captured/retention-preview','POST',{days:Number($('retentionDays').value)});
+        if(!uiUnlocked)return;
+        retentionReview=review;
+        $('retentionStatus').textContent=review.count?`${review.count} captured snapshot${review.count===1?'':'s'} older than ${review.days} days, including linked editable copies and history. Oldest: ${localDate(review.oldest)}.`:'No captured snapshots match this window.';
+        $('retentionApply').disabled=!review.count;
+      }catch(error){if(uiUnlocked)resetRetentionReview(error.message);}
+      finally{$('retentionPreview').disabled=false;}
+    });
+    $('retentionApply').addEventListener('click',async()=>{
+      const review=retentionReview;if(!review?.count)return;
+      if(!await ask(`Permanently delete ${review.count} reviewed captured snapshot${review.count===1?'':'s'} and any linked editable copies and history?`))return;
+      $('retentionApply').disabled=true;
+      try{const result=await api('/api/captured/retention-apply','POST',review);resetRetentionReview(`Deleted ${result.removed} captured snapshot${result.removed===1?'':'s'}.`);await refresh();}
+      catch(error){if(uiUnlocked)resetRetentionReview(`${error.message} Preview again before deleting.`);}
     });
     $('changePassphrase').addEventListener('click',()=>{clearPassphraseForm();$('passphraseDialog').showModal();$('currentPassphrase').focus();});
     for(const id of ['closePassphrase','cancelPassphrase'])$(id).addEventListener('click',()=>{$('passphraseDialog').close();clearPassphraseForm();});
@@ -1053,8 +1252,7 @@ import { initAssistant } from './assistant.js';
       } catch (error) { if(attempt===authAttempt)$('gateError').textContent = error.message; }
       finally { if(attempt===authAttempt)setAuthBusy(false); }
     });
-    $('mainNav').querySelectorAll('[data-filter]').forEach(el => el.addEventListener('click',() => chooseSection(el.dataset.filter)));
-    $('filterPills').querySelectorAll('[data-filter]').forEach(el => el.addEventListener('click',() => chooseSection(el.dataset.filter)));
+    document.querySelectorAll('[data-filter]').forEach(el => el.addEventListener('click',() => chooseSection(el.dataset.filter)));
     $('settingsNav').addEventListener('click',() => chooseSection('settings'));
     $('writingNav').addEventListener('click',() => chooseSection('writing'));
     $('styleNew').addEventListener('click',async()=>{if(styleHasUnsaved()&&!(await ask('Discard unsaved writing changes?',{title:'New writing profile'})))return;resetStyleFields();await loadStyleProfiles();$('styleName').focus();});
@@ -1075,7 +1273,6 @@ import { initAssistant } from './assistant.js';
     $('settingsBack').addEventListener('click',() => chooseSection('all'));
     for (const id of ['lockButton','settingsLock']) $(id).addEventListener('click',() => void lock());
     for (const id of ['heroNew','newButton','emptyNew']) $(id).addEventListener('click',() => openEditor());
-    $('tipButton').addEventListener('click',() => openEditor(null,true));
     for (const id of ['cancelDialog','closeDialog']) $(id).addEventListener('click',()=>closeEditor());
     for (const id of ['closeHistory','doneHistory']) $(id).addEventListener('click',() => $('historyDialog').close());
     $('searchInput').addEventListener('input',() => {clearTimeout(searchTimer);searchTimer=setTimeout(() => void loadItems(),240);});

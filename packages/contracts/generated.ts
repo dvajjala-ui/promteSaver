@@ -17,7 +17,7 @@ export interface Observation {
   sequence: number;
   recordedAt: string;
   kind: "snapshot" | "submit" | "focus" | "gap";
-  sourceMethod: "editor_snapshot" | "submission_hook" | "synthetic_replay";
+  sourceMethod: "editor_snapshot" | "submission_hook" | "synthetic_replay" | "local_transcript";
   origin: "user" | "suggestion" | "mixed" | "unknown";
   surface: Surface;
   text?: string;
@@ -34,7 +34,7 @@ export interface PromptRecord {
   surface: Surface;
   text: string;
   quality: "exact_submitted" | "draft_snapshot" | "partial";
-  sourceMethod: "editor_snapshot" | "submission_hook" | "synthetic_replay";
+  sourceMethod: "editor_snapshot" | "submission_hook" | "synthetic_replay" | "local_transcript";
   origin: "user" | "suggestion" | "mixed" | "unknown";
   redactions: number;
   sourceMessageId?: string;

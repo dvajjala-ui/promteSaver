@@ -19,6 +19,8 @@ import { redactText } from '../../packages/capture-core/redact.ts';
 import { GroqRunner, prepareAI, AIProblem, type AITransport } from './ai.ts';
 import { DEFAULT_GROQ_MODEL } from '../../packages/local-store/ai-settings.ts';
 import { AUTO_CAPTURE_HOSTS, browserCapture } from './browser-capture.ts';
+import { instructionQuote } from './refinement.ts';
+import { NativeCaptureSession } from './native-capture.ts';
 
 const webRoot = fileURLToPath(new URL('./public/', import.meta.url));
 const publicFiles: Record<string, [string, string]> = {
@@ -65,7 +67,11 @@ function authorized(received: string | undefined, expected: string): boolean {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 function tagged(item: LibraryEntry) { return { ...item, etag: libraryETag(item) }; }
-export interface LocalWebOptions { directory: string; port?: number; idleMinutes?: number; aiTransport?: AITransport; aiTimeoutMs?: number; }
+export interface LocalWebOptions { directory: string; port?: number; idleMinutes?: number; aiTransport?: AITransport; aiTimeoutMs?: number;
+  desktop?:boolean;
+  /** Synthetic source injection for local tests, never accepted through HTTP. */
+  nativeSourceDirectory?:string;
+}
 export async function startLocalWeb(options: LocalWebOptions) {
   const vault = new LocalVault(options.directory);
   const token = randomBytes(32).toString('hex');
@@ -74,6 +80,8 @@ export async function startLocalWeb(options: LocalWebOptions) {
   const releaseLease = acquireVaultLease(vault.directory);
   const secureWork = new WorkGate();
   const ai = new GroqRunner(options.aiTransport,options.aiTimeoutMs);
+  const nativeCapture = new NativeCaptureSession(vault,{...(options.desktop===undefined?{}:{desktop:options.desktop}),
+    ...(options.nativeSourceDirectory===undefined?{}:{directory:options.nativeSourceDirectory})});
   let aiSettingsVersion = 0;
   let allowedCaptureHosts = new Set<string>();
   let offeredCaptureHosts = new Set<string>();
@@ -82,6 +90,7 @@ export async function startLocalWeb(options: LocalWebOptions) {
   let idleTimer: ReturnType<typeof setTimeout> | undefined;
   const idleMs = () => (options.idleMinutes ?? preferences.idleMinutes) * 60_000;
   const lockVault = () => {
+    nativeCapture.pause();
     secureWork.cancel(); ai.cancel(); allowedCaptureHosts.clear(); offeredCaptureHosts.clear();
     clearTimeout(idleTimer); idleTimer = undefined;
     try { vault.lock(); } finally { writerToken = undefined; writerOrigin = undefined; writerExpiresAt = 0;
@@ -197,7 +206,7 @@ export async function startLocalWeb(options: LocalWebOptions) {
       requestEpoch = vault.sessionVersion;
       const path = url.pathname;
       // Health/status polling is observational and MUST NOT extend an idle session.
-      if (!['/api/status', '/api/diagnostics'].includes(path) && vault.status().unlocked) touch();
+      if (!['/api/status', '/api/diagnostics','/api/capture/status'].includes(path) && vault.status().unlocked) touch();
       const deadlineHeaders = () => {
         res.setHeader('X-Vault-Lock-At', vault.status().unlocked ? String(lastActivity + idleMs()) : '0');
         res.setHeader('X-Vault-Now', String(Date.now()));
@@ -207,6 +216,16 @@ export async function startLocalWeb(options: LocalWebOptions) {
         ...vault.status(), idleMinutes: idleMs() / 60_000,
         lockAt: vault.status().unlocked ? lastActivity + idleMs() : null, version: APP_VERSION, operation: secureWork.operation
       });
+      if(path==='/api/capture/status' && req.method==='GET') {
+        const unlocked=vault.status().unlocked;
+        const paired=unlocked&&!!writerToken&&Date.now()<writerExpiresAt;
+        const authorized=paired&&allowedCaptureHosts.size>0;
+        const native=nativeCapture.status();
+        return json(res,200,{state:!unlocked?'locked':native.state==='running'||authorized?'ready':paired?'paused':'unpaired',
+          browser:{paired,active:paired,authorized,hosts:paired?[...allowedCaptureHosts]:[],
+            expiresAt:paired?new Date(writerExpiresAt).toISOString():null,pairingPending:!!pairSecret&&Date.now()<pairExpiresAt},
+          native,dailyReview:{available:true,automaticCloud:false}});
+      }
       if (path === '/api/setup' && req.method === 'POST') {
         await runSecure('setup', async signal => {
           const data = await readBody(); checkCancelled(signal);
@@ -225,6 +244,34 @@ export async function startLocalWeb(options: LocalWebOptions) {
       if (path === '/api/lock' && req.method === 'POST') { lockVault(); deadlineHeaders(); return json(res, 200, { ok: true }); }
       if (!vault.status().unlocked) throw new HttpProblem(423, 'Vault is locked');
       const archive = vault.archive;
+      if(path==='/api/capture/native'&&req.method==='POST') {
+        const payload=await readBody(1000);
+        if(Object.keys(payload).some(key=>!['enabled','consent'].includes(key))||typeof payload.enabled!=='boolean'||
+          (payload.enabled&&payload.consent!==true))throw new HttpProblem(400,'Explicit source approval required');
+        if(payload.enabled){
+          if(!nativeCapture.available)throw new HttpProblem(409,'Use the Windows desktop app for this source');
+          await nativeCapture.enable();assertSession();
+        }else nativeCapture.pause();
+        const native=nativeCapture.status();
+        if(native.state==='error')return json(res,409,{error:native.code==='SOURCE_LIMIT'?
+          'Codex source exceeds the preview limit. Capture remains off.':'Codex local session source is unavailable. Capture remains off.',code:native.code,native});
+        return json(res,200,nativeCapture.status());
+      }
+      if(path==='/api/capture/pause'&&req.method==='POST') {
+        await readBody(1000);nativeCapture.pause();
+        writerToken=undefined;writerOrigin=undefined;writerExpiresAt=0;pairSecret=undefined;pairExpiresAt=0;
+        allowedCaptureHosts.clear();offeredCaptureHosts.clear();
+        return json(res,200,{paused:true});
+      }
+      if(path==='/api/capture/review'&&req.method==='GET') {
+        const limit=Number(url.searchParams.get('limit')??20);const offset=Number(url.searchParams.get('offset')??0);
+        if(!Number.isInteger(limit)||limit<1||limit>20)throw new HttpProblem(400,'Invalid review limit');
+        const page=archive.capturePage('',limit,offset);
+        return json(res,200,{scope:'recent-page',method:'offline-heuristics',automaticCloud:false,
+          items:page.items.map(item=>{const suggestions=item.text.length<=12000?proofreadWriting(item.text):[];
+            return {id:item.id,text:item.text,source:item.surface.appId,recordedAt:item.recordedAt,quality:item.quality,
+              suggestions,changed:false,checkSkipped:item.text.length>12000};}),more:offset+page.items.length<page.total});
+      }
       if(path === '/api/ai/settings' && req.method === 'GET') {
         const config=archive.aiSettings();return json(res,200,{configured:!!config,enabled:config?.enabled??false,
           model:config?.model??DEFAULT_GROQ_MODEL,provider:'groq',busy:ai.busy});
@@ -239,8 +286,37 @@ export async function startLocalWeb(options: LocalWebOptions) {
         ai.cancel();aiSettingsVersion++;archive.deleteAISettings();return json(res,200,{removed:true});
       }
       if(path === '/api/ai/cancel' && req.method === 'POST') {ai.cancel();return json(res,200,{cancelled:true});}
+      const refinementSource = (payload: Record<string,unknown>) => {
+        if(typeof payload.sourceId!=='string'||!/^[a-zA-Z0-9_-]{1,100}$/.test(payload.sourceId)||
+           typeof payload.sourceETag!=='string'||payload.sourceETag.length>100)
+          throw new HttpProblem(400,'Choose a saved source before refining it.');
+        const source=archive.getLibrary(payload.sourceId);
+        if(!source||source.deletedAt)throw new HttpProblem(409,'The saved source is unavailable. Reopen a current prompt.');
+        if(libraryETag(source)!==payload.sourceETag)throw new HttpProblem(409,'The saved source changed. Reopen it before refining or saving an instruction.');
+        if(source.body.length>12_000)throw new HttpProblem(400,'Refinement supports saved sources up to 12,000 characters.');
+        return source;
+      };
+      if(path === '/api/refinements/save' && req.method === 'POST') {
+        const payload=await readBody(16_000);
+        if(Object.keys(payload).some(key=>!['sourceId','sourceETag','title','quote','scope','reviewed'].includes(key))||
+          payload.reviewed!==true||!['task','project','personal'].includes(payload.scope as string)||
+          typeof payload.title!=='string'||!payload.title.trim()||payload.title.length>100)
+          throw new HttpProblem(400,'Review the exact quote and choose an instruction scope before saving.');
+        const source=refinementSource(payload);
+        if(!instructionQuote(payload.quote,source.body))throw new HttpProblem(400,'Use an exact, complete sentence or line from the current source; preserve its restrictions.');
+        if(payload.scope==='project'&&!source.project)throw new HttpProblem(400,'Assign the source to a project before choosing project scope.');
+        const offset=source.body.indexOf(payload.quote);
+        const saved=archive.saveLibrary({title:payload.title,body:payload.quote,kind:'template',
+          project:payload.scope==='personal'?'':source.project,source:'Reviewed source extract',
+          tags:['instruction-block','source-extract',`scope-${payload.scope}`],
+          notes:`User-reviewed ${payload.scope}-scoped quote. Source item ${source.id}, revision ${source.revision}, range ${offset}:${offset+payload.quote.length}. Source SHA-256 ${createHash('sha256').update(source.body).digest('hex')}. This editable copy is independent; deleting the source does not delete it. Selection is not evidence of a repeated human preference.`});
+        return json(res,201,{...saved,item:tagged(saved.item),scope:payload.scope,independentCopy:true});
+      }
       if(['/api/ai/preview','/api/ai/run'].includes(path) && req.method === 'POST') {
-        const payload=await readBody(65_000);
+        const payload=await readBody(128_000);
+        const refinement=payload.action==='understand'||payload.action==='extract';
+        const source=refinement?refinementSource(payload):undefined;
+        if(source&&payload.text!==source.body)throw new HttpProblem(409,'Refinement text must match the saved source. Save edits before refining.');
         let style='';
         if(payload.styleId!==undefined && payload.styleId!=='') {
           if(typeof payload.styleId!=='string')throw new HttpProblem(400,'Invalid writing profile');
@@ -252,14 +328,15 @@ export async function startLocalWeb(options: LocalWebOptions) {
         const config=archive.aiSettings();
         // The approved payload must still match when a different tab edits a style/model.
         const reviewDigest=createHash('sha256').update(JSON.stringify({messages:prepared.messages,
-          model:config?.model??DEFAULT_GROQ_MODEL,epoch:requestEpoch,settingsVersion:aiSettingsVersion})).digest('hex');
+          model:config?.model??DEFAULT_GROQ_MODEL,epoch:requestEpoch,settingsVersion:aiSettingsVersion,
+          ...(source?{sourceId:source.id,sourceETag:libraryETag(source)}:{})})).digest('hex');
         if(path.endsWith('/preview'))return json(res,200,{text:prepared.text,style:prepared.style,redactions:prepared.redactions,
           action:prepared.action,messages:prepared.messages,destination:'Groq cloud',sampleExcerptsIncluded:false,reviewDigest});
         if(payload.consent!==true)throw new HttpProblem(400,'Review the preview and explicitly consent before sending text to Groq.');
         if(!config)throw new HttpProblem(400,'Configure Groq locally in Settings first.');
         if(payload.reviewDigest!==reviewDigest)throw new HttpProblem(409,'The text, model, profile or session changed. Review a fresh preview before sending.');
         const onClose=()=>{if(!res.writableEnded)ai.cancel();};res.once('close',onClose);
-        try {const result=await ai.run(prepared,config);assertSession();return json(res,200,result);}
+        try {const result=await ai.run(prepared,config);assertSession();if(source)refinementSource(payload);return json(res,200,result);}
         finally {res.removeListener('close',onClose);}
       }
       if (path === '/api/diagnostics' && req.method === 'GET') return json(res, 200, diagnosticSnapshot({
@@ -389,8 +466,10 @@ export async function startLocalWeb(options: LocalWebOptions) {
           const first=Math.min(...matchedTerms.map(term=>lower.indexOf(term)).filter(index=>index>=0));
           const start=Number.isFinite(first)?Math.max(0,first-60):0;
           const end=Math.min(item.body.length,start+240);
-          return {id:item.id,etag:libraryETag(item),title:item.title,kind:item.kind,project:item.project,source:item.source ?? '',
-            provenance:item.captureId?'Editable copy of browser snapshot':item.kind==='template'?'Template':'Saved prompt',
+          return {id:item.id,etag:libraryETag(item),revision:item.revision,feedback:item.feedback ?? null,
+            title:item.title,kind:item.kind,project:item.project,source:item.source ?? '',
+            provenance:item.captureId?'Editable copy of browser snapshot':item.tags.includes('source-extract')?'Reviewed source quote · independent copy':item.kind==='template'?'Template':'Saved prompt',
+            scope:item.tags.includes('instruction-block')?item.tags.find(tag=>/^scope-(?:task|project|personal)$/.test(tag))?.slice(6):undefined,
             updatedAt:item.updatedAt,matchedTerms,
             preview:(start?'…':'')+item.body.slice(start,end)+(end<item.body.length?'…':'')};
         })});
@@ -448,6 +527,17 @@ export async function startLocalWeb(options: LocalWebOptions) {
       }
       const useId = /^\/api\/items\/([a-zA-Z0-9_-]{1,100})\/use$/.exec(path)?.[1];
       if (useId && req.method === 'POST') return json(res, 200, { item: tagged(archive.recordUse(useId)) });
+      const feedbackId = /^\/api\/items\/([a-zA-Z0-9_-]{1,100})\/feedback$/.exec(path)?.[1];
+      if (feedbackId && req.method === 'POST') {
+        const payload=await readBody(2_000);
+        if(Object.keys(payload).some(key=>!['revision','feedback'].includes(key))||
+           !Number.isSafeInteger(payload.revision)||
+           ![null,'worked','not-useful','hidden'].includes(payload.feedback as string | null))
+          throw new HttpProblem(400,'Choose feedback for a current saved revision.');
+        if(typeof req.headers['if-match']!=='string')throw new HttpProblem(428,'Reopen the saved item before recording feedback.');
+        archive.checkEdit(feedbackId,req.headers['if-match']);
+        return json(res,200,{item:tagged(archive.setLibraryFeedback(feedbackId,payload.revision as number,payload.feedback as 'worked'|'not-useful'|'hidden'|null))});
+      }
       const undeleteId = /^\/api\/items\/([a-zA-Z0-9_-]{1,100})\/undelete$/.exec(path)?.[1];
       if (undeleteId && req.method === 'POST') return json(res, 200, { item: tagged(archive.undeleteLibrary(undeleteId)) });
       const purgeId = /^\/api\/items\/([a-zA-Z0-9_-]{1,100})\/purge$/.exec(path)?.[1];
@@ -483,7 +573,9 @@ export async function startLocalWeb(options: LocalWebOptions) {
         }
         if (req.method === 'DELETE') return json(res, 200, { deleted: archive.deleteLibrary(id) });
       }
-      if (path === '/api/captured' && req.method === 'GET') return json(res, 200, { items: archive.recentCaptures() });
+      if (path === '/api/captured' && req.method === 'GET') return json(res, 200, archive.capturePage(url.searchParams.get('q')??'',Number(url.searchParams.get('limit')??20),Number(url.searchParams.get('offset')??0)));
+      if (path === '/api/captured/retention-preview' && req.method === 'POST') { const p=await readJson(req); return json(res,200,archive.captureRetentionPreview(p.days as number)); }
+      if (path === '/api/captured/retention-apply' && req.method === 'POST') { const p=await readJson(req); try{return json(res,200,{removed:archive.purgeCapturesOlderThan(p)});}catch(error){if(error instanceof Error&&error.message==='Capture retention preview changed')throw new HttpProblem(409,error.message);throw error;} }
       const capturedId = /^\/api\/captured\/([a-zA-Z0-9_-]{1,100})$/.exec(path)?.[1];
       if (capturedId && req.method === 'DELETE') { archive.deleteCaptureWithCopies(capturedId); return json(res, 200, { deleted: true }); }
       if (path === '/api/examples' && req.method === 'POST') {
@@ -523,7 +615,7 @@ export async function startLocalWeb(options: LocalWebOptions) {
       if (res.headersSent) { res.end(); return; }
       if (error instanceof LibraryConflictError || error instanceof StyleConflictError) { json(res, 412, { error: error.message, code: 'EDIT_CONFLICT' }); return; }
       const problem = error instanceof HttpProblem ? error : undefined;
-      const message = problem?.message ?? (error instanceof Error && /^(Invalid editor draft|Editor draft limit|Invalid writing profile|Writing profile not found|Writing profile limit|Invalid writing samples|Invalid writing task|Invalid writing check|Encrypted editor draft|Invalid preferences|Invalid library|Library item not found|Restore item|Item is not in trash|Revision not found|Invalid result limit|Invalid backup|Backup |Passphrase must|Vault is already|Vault must|Vault is locked|Vault database is missing|Could not unlock|Too many attempts)/.test(error.message) ? error.message : 'Operation failed');
+      const message = problem?.message ?? (error instanceof Error && /^(Invalid capture search|Invalid capture retention|Capture retention preview expired|Invalid editor draft|Editor draft limit|Invalid writing profile|Writing profile not found|Writing profile limit|Invalid writing samples|Invalid writing task|Invalid writing check|Encrypted editor draft|Invalid preferences|Invalid library|Library item not found|Restore item|Item is not in trash|Revision not found|Invalid result limit|Invalid backup|Backup |Passphrase must|Vault is already|Vault must|Vault is locked|Vault database is missing|Could not unlock|Too many attempts)/.test(error.message) ? error.message : 'Operation failed');
       const status = problem?.status ?? (message === 'Vault is locked' ? 423 : message === 'Could not unlock vault' || message.startsWith('Too many attempts') ? 401 : (message === 'Library item not found' || message === 'Writing profile not found' || message === 'Revision not found' || message === 'Item is not in trash') ? 404 : message === 'Vault is already initialized' ? 409 : message === 'Operation failed' ? 500 : 400);
       json(res, status, { error: message });
     }

@@ -2,6 +2,30 @@
 
 Date: 2026-10-23. Built from the uploaded v0.8 source. This release changes core functionality, not merely styling. It remains a developer pilot, not a universal recorder or signed desktop release.
 
+**25 October follow-up:** The Windows preview now has an optional **Start with Windows** checkbox, off by default. It launches the visible native app at sign-in but leaves the vault locked and browser pairing revoked. The control was inspected in a synthetic native UI; login/reboot and the real toggle were not tested. The rebuilt 42-file portable preview and extracted ZIP passed native temporary-vault self-test. This does not establish Win+V-like background capture or collection from every browser and desktop app.
+
+## Windows password-free preview continuation — 25 October 2026
+
+The compiled Windows preview now opens its own new encrypted vault through **Create vault** / **Open vault** without asking for a passphrase. Its random secret is protected by Windows CurrentUser DPAPI. The earlier passphrase vault is left untouched and has no native migration flow. Browser pairing now approves one selected supported host at a time. The Capture screen retains visible source status, pause/lock and explicit offline review; Codex transcript capture remains disabled pending private-session verification.
+
+**Tested locally:** 186/186 Node tests; 30/30 mocked Chromium UI, 20/20 temporary-service Chromium UI and 53/53 synthetic composer scenarios; 42 verified portable files; native EXE self-test including DPAPI failure cases, simulated approved browser send and `draft_snapshot` storage; extracted portable ZIP self-test; and one native Create vault click in a temporary vault. **Synthetic only:** browser send/extension behavior and producer fixtures. **Untested on real site/OS:** human extension permission and real ChatGPT/Claude/Gemini send, clean-device install, old-vault migration, prolonged tray behavior, Mac and full process-tree resource cost. Chrome access later became available, but the browser tool blocked extension setup by policy, so no real ChatGPT send occurred. **Not implemented:** cross-application keyboard capture, automatic capture resume after login, all-day capture beyond idle lock, automatic end-of-day AI rewrite and corrections inside other applications. See [test report](TEST_REPORT_V0_9.md) and [readiness matrix](READINESS_V0_9.md).
+
+## Windows Capture developer preview — 24 October 2026
+
+The current local continuation puts Capture first. A compiled native WinForms window now owns a private local Node sidecar and shows approved-source state, recent immutable saved snapshots, search, explicit offline wording review, browser pairing and tray pause/lock/quit. Library, Writing Studio and cloud AI tools are grouped outside the primary Capture path. Capture safety rules may redact obvious secrets before persistence, so a saved snapshot is not promised to be byte-for-byte raw text. The unsigned portable folder includes the supported Node runtime, full license and unpacked browser helper. The PowerShell/localhost entry point remains a source fallback.
+
+An experimental Codex local-session producer exists and was exercised with an injected synthetic directory. It can watch new `user_message` JSONL events without importing prior history and store encrypted immutable `draft_snapshot` evidence linked to a separate editable copy. **Real Codex transcript collection is disabled in the public Windows preview** until protected/private-session exclusion can be verified. Browser capture still needs explicit per-site permission, pairing and a supported composer. `Pause all` revokes current source authorization. The new manual recent-wording review uses bounded offline spacing/repetition/punctuation checks, leaves the saved snapshot unchanged and makes no automatic cloud request.
+
+**Tested locally:** native EXE compiled on Windows, 42 staged runtime files verified, and a temporary-vault `--self-test` passed after the final fail-closed rebuild; an earlier relocated portable folder also passed from a path with spaces. The post-gate `npm run check` passed **184/184** with no skips or failures; demo, doctor and desktop plan passed. The native UI was visually inspected with a synthetic vault. **Synthetic only:** injected-directory Codex JSONL fixtures, 30/30 actual UI fixtures, 20/20 Chromium-to-temporary-local-service scenarios, 53/53 core Chromium source fixtures and a 5,000-record backend benchmark. **Untested on OS/browser:** actual Codex session format/private modes, real AI-site capture and human extension permission, live Groq, clean-device/tray endurance, macOS and whole-app resource budgets. **Not implemented:** usable real Codex source in this preview, generic all-app keyboard capture, login startup, continuous all-day capture past idle lock, automatic end-of-day AI grammar rewrite, correction inside other apps, installer or signed distribution. This is an unsigned developer preview, not a market-ready product. See [the current test report](TEST_REPORT_V0_9.md) and [readiness matrix](READINESS_V0_9.md).
+
+The sections below preserve earlier increments as historical results; their smaller test totals and native-source-only statements do not describe this latest local build.
+
+## Windows personal-pilot startup fix — 24 October 2026
+
+Added a double-click `start-windows.cmd` entry point that checks the supported Node runtime, chooses the app folder and keeps startup errors visible. It avoids the PowerShell file-association/pasted-script problem without changing execution policy. Open the private URL printed by the launcher and keep its console running. Starting the service does not enable capture.
+
+**Tested locally:** 165/165 Node tests, full source check, demo and doctor passed on Windows/Node 24.16.0. **Synthetic only:** three actual CMD launcher checks used a temporary synthetic server, including a path with spaces, server failure and missing Node. A 5,000-record benchmark remains synthetic and excludes browser memory. **Untested on OS/browser:** Explorer double-click, real-site capture, live Groq, native installation and macOS were not exercised in this increment; browser suites were not rerun. **Not implemented:** login startup, tray controls, automatic browser opening and general all-day/all-app text recording. Details: [test report](TEST_REPORT_V0_9.md).
+
 ## Implemented
 
 - MV3 companion service-worker source, optional permissions for three sites, explicit per-site enable/pause, trusted top-frame source validation, session-only write token and per-session vault consent.
@@ -25,3 +49,23 @@ No native installer, general cross-application recorder, global assistant overla
 ## Upgrade
 
 Stop the previous service and back up the complete vault folder. Key envelope remains v2; linked-capture snapshots use v4 and are not compatible with older importers. Preserve pre-upgrade backups. No Groq key is preconfigured. New capture and external AI are off until enabled explicitly. See [PILOT_GUIDE_V0_9.md](PILOT_GUIDE_V0_9.md).
+
+## Local reliability increment — 24 October 2026
+
+Implemented shared producer exclusions for manual preview, host-change rejection, permission/pairing revalidation, serialized enable/pause, revocation cancellation, focus/form/IME/stale-response guards, accurate unconfirmed-save errors and Unicode-mark recall. Manual preview now excludes single-line inputs. No storage-format migration, new production dependency or permission expansion.
+
+Tested locally on Windows: 154 Node tests, 48 core and 22 baseline Chromium synthetic scenarios, 15 browser-to-local-service scenarios and eight unpacked-worker checks pass. Synthetic-only boundaries include site composers, composition events and provider transport. Real site consent/capture, live Groq, native installation, Mac runtime, OS key protection, full-file encryption and sync remain untested or unimplemented as detailed in [the test report](TEST_REPORT_V0_9.md) and [readiness matrix](READINESS_V0_9.md). No published release or deployment was created.
+
+## Local source-bound refinement increment — 24 October 2026
+
+The later local continuation adds explicit captured-record retention review and deletion, with 7/30/90/365-day windows, exact candidate binding, linked-copy/history cleanup and deletion tombstones. Captured records now have bounded server pages and search, so older evidence is reachable. On Windows, the complete source check passed 165/165 Node tests, demo and doctor passed, and two direct actual-source Chromium flows passed. The repository's Python browser fixture runner was unavailable because its Python environment lacks Playwright. These changes are source and local-service tested; native and real-site gates remain open.
+
+Added two explicitly reviewed AI actions for saved prompts: first understand the task and quoted constraints, then extract exact instruction candidates after another local preview and fresh consent. Users choose task/project/personal scope for each saved quote. Extracts are independent editable templates with source reference details in encrypted notes; the original is unchanged. Automatic local recall now withholds task-only blocks and restricts project blocks to the selected project. The full pending-work inventory is [PRODUCT_BACKLOG.md](PRODUCT_BACKLOG.md).
+
+The current local source passes 160 Node tests, 52 core Chromium fixtures, 22 baseline UI fixtures and 15 browser-to-local-service UI scenarios. Groq responses were mocked. Semantic quote scope, durable derived-record lineage, feedback, live provider quality, real sites, native/Mac builds, full-file encryption and sync remain open; see [the latest verification report](TEST_REPORT_V0_9.md).
+
+## Local feedback and capture-gap increment — 24 October 2026
+
+Related results now explain local keyword matches and offer exact clipboard copy or an editable draft copy. A source project can be applied to the draft only by explicit click. Revision-bound worked well/not useful/hidden feedback is encrypted, backed up and clearable in the inspector; Hidden suppresses that revision from related results without deleting it. Captured cards explain evidence quality, source, time and deletion. The browser popup shows up to 20 content-free, session-only failed-save reasons and can clear them. These are partial steps toward the [complete product backlog](PRODUCT_BACKLOG.md), not automatic learning or full gap coverage.
+
+Latest Windows local checks: 162 Node tests, 53 actual-source core Chromium scenarios, 27 baseline UI fixture scenarios, 19 browser-to-local-service UI scenarios and eight real unpacked-worker scoped checks pass. No live website, human permission grant, provider call, native installation or Mac runtime validation was done. [Evidence and limits](TEST_REPORT_V0_9.md).

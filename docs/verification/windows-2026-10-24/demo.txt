@@ -1,0 +1,23 @@
+
+> promtesaver@0.9.0 demo
+> node apps/harness/replay.ts
+
+{
+  "mode": "synthetic-only",
+  "recording": "off",
+  "network": "off",
+  "beforeRestart": {
+    "records": 3,
+    "pending": 3,
+    "tombstones": 0
+  },
+  "afterRestart": {
+    "records": 3,
+    "pending": 3,
+    "tombstones": 0
+  },
+  "historicalSearchMatches": 1,
+  "redactedRecords": 1,
+  "storage": "AES-256-GCM payloads in SQLite; not SQLCipher",
+  "keyPersistence": "memory only; demo files removed"
+}

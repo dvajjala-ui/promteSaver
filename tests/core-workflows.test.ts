@@ -54,6 +54,19 @@ test('explicit local recall ranks saved sources and excludes the current or dele
   }finally{await f.cleanup();}
 });
 
+test('local recall preserves Telugu, Hindi and decomposed accents as complete query terms',async()=>{
+  const f=await fixture();
+  try {
+    for(const keyword of ['తెలుగు','परीक्षण','café']){
+      const saved=(await f.call('/api/items','POST',{title:'Synthetic mixed-language example',body:`Keep this ${keyword} instruction unchanged.`,project:'Languages'})).body.item;
+      const found=await f.call('/api/recall','POST',{text:keyword.normalize('NFD'),project:'Languages'});
+      assert.equal(found.status,200);assert.equal(found.body.matches[0].id,saved.id);
+      assert.deepEqual(found.body.matches[0].matchedTerms,[keyword.normalize('NFKC')]);
+      assert.equal((await f.call(`/api/items/${saved.id}`)).body.item.body,saved.body);
+    }
+  }finally{await f.cleanup();}
+});
+
 test('Groq key syntax and raw token redaction; no arbitrary provider endpoint',()=>{
   assert.deepEqual(validateAISettings(config),config);
   assert.throws(()=>validateAISettings({...config,endpoint:'http://attacker.test'}));

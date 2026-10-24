@@ -25,6 +25,8 @@ Planning snapshot: 19 October 2026. “Accepted direction” comes from the conv
 | D19 | Use Node/TypeScript and encrypted-record SQLite for the first executable synthetic harness | Implemented prototype, 19 October 2026 | Node is available; Rust/native encryption packaging is unverified. This does not replace the planned Rust collector or claim SQLCipher encryption. Revisit before retaining real typing. |
 | D20 | Use a separate UI thread for the owned-control Windows accessibility experiment | Verified on synthetic Windows controls | The same-thread probe exposed no readable pattern; the threaded probe read `TextPattern`. General application coverage remains unproven. |
 
+**25 October 2026 product correction:** The customer setup target is one Windows desktop application without mandatory unpacked extension installation. Native, per-app/per-editor adapters are the first capture path to prove; browser integration remains optional where native evidence is insufficient. This changes implementation priority, not current readiness: broad capture, continuous resume and real-site compatibility are unimplemented. Windows UI Automation can expose text only when the target control provides suitable patterns; low-level keyboard events alone do not establish final text or send completion. Preserve explicit source approval and private/protected exclusions before reading.
+
 ## Open decisions
 
 - Product branding and public source licence; no licence for original Pomte code has been selected.
@@ -50,3 +52,12 @@ Do not require answers to every open decision before starting M0. Resolve each w
 | D26 | Browser helper uses explicit user click + activeTab allowlist, no background script | Implemented, compatibility unverified | Privacy-first stepping stone; no claim of universal or passive capture |
 | D27 | No cloud inference, telemetry, or sync by default | Implemented | Validate user value and scope first; scope remote processing separately |
 | D28 | Tauri 2 + Rust native shell remains the preferred hypothesis, not a completed migration | Proposed | Profile startup, RAM, capture OS permissions and platform stability before confirming |
+
+## 24 October 2026 — reviewed source extraction
+
+| ID | Decision | Status | Rationale / limits |
+| --- | --- | --- | --- |
+| D29 | Add saved-source-bound understanding and exact-quote extraction as two separately previewed, consented AI actions | Implemented local slice | Revision/ETag checks and conservative quote boundaries keep a changed source or invented quote out of a saved block. The user still reviews semantic scope; outputs are data and real-provider quality remains unverified. |
+| D30 | Save chosen quotes as independent editable templates with explicit task/project/personal scope | Implemented local slice | Avoid overwriting original evidence or implying a linked deletion guarantee the schema does not provide. Encrypted notes hold source ID/revision/range/hash for reference; this is not structured durable lineage or repeated-human-preference evidence. Task blocks stay manual, project blocks recall only in the selected project. Revisit with versioned derivations and feedback. |
+| D31 | Keep outcome feedback on an encrypted library revision; suppress only explicit Hidden feedback | Implemented local slice | Worked well/not useful are user reports, not measured result quality or ranking weights. An edit resets feedback on the new revision, while history keeps the old revision's feedback. Older backup importers may drop these new optional fields. |
+| D32 | Keep browser capture-gap diagnostics content-free and session-bounded | Implemented local slice | Up to 20 supported-site/fixed-reason/time entries are stored in trusted extension session storage, with a clear control. No prompt text, full URL or retry payload is kept. This cannot prove gaps for unsupported editors that never send a request. |

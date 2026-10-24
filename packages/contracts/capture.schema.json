@@ -25,7 +25,7 @@
         "sequence": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
         "recordedAt": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$" },
         "kind": { "type": "string", "enum": ["snapshot", "submit", "focus", "gap"] },
-        "sourceMethod": { "type": "string", "enum": ["editor_snapshot", "submission_hook", "synthetic_replay"] },
+        "sourceMethod": { "type": "string", "enum": ["editor_snapshot", "submission_hook", "synthetic_replay", "local_transcript"] },
         "origin": { "type": "string", "enum": ["user", "suggestion", "mixed", "unknown"] },
         "surface": { "$ref": "#/$defs/Surface" },
         "text": { "type": "string", "maxLength": 262144 },
@@ -49,7 +49,7 @@
         "surface": { "$ref": "#/$defs/Surface" },
         "text": { "type": "string", "minLength": 1, "maxLength": 262144 },
         "quality": { "type": "string", "enum": ["exact_submitted", "draft_snapshot", "partial"] },
-        "sourceMethod": { "type": "string", "enum": ["editor_snapshot", "submission_hook", "synthetic_replay"] },
+        "sourceMethod": { "type": "string", "enum": ["editor_snapshot", "submission_hook", "synthetic_replay", "local_transcript"] },
         "origin": { "type": "string", "enum": ["user", "suggestion", "mixed", "unknown"] },
         "redactions": { "type": "integer", "minimum": 0 },
         "sourceMessageId": { "type": "string", "maxLength": 200 }

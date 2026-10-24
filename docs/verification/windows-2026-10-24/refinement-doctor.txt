@@ -1,0 +1,25 @@
+
+> promtesaver@0.9.0 doctor
+> node scripts/doctor.mjs
+
+{
+  "application": "promteSaver Local Beta",
+  "version": "0.9.0",
+  "nodeVersion": "v24.16.0",
+  "recommendedNode": ">=24.16.0 <25",
+  "nodeTargetMet": true,
+  "os": "win32",
+  "architecture": "x64",
+  "kernelRelease": "10.0.26200",
+  "totalMemoryMiB": 8061,
+  "freeMemoryMiB": 2436,
+  "requiredFilesPresent": true,
+  "nodeRuntimeRequired": true,
+  "nativeRecorderIncluded": false,
+  "desktopInstallerIncluded": false,
+  "desktopHostSourceIncluded": true,
+  "desktopHostCompiledInThisRelease": false,
+  "keyEnvelopeFormat": 2,
+  "browserHelperUnpackedOnly": true,
+  "note": "Diagnostic reports environment and repository files only; it does not inspect your prompts or use the network."
+}

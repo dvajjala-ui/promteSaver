@@ -3,7 +3,7 @@
 (() => {
   const storage=new Map([['promtesaver.session','a'.repeat(64)]]);
   Object.defineProperty(window,'sessionStorage',{configurable:true,value:{getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value)}});
-  const state={initialized:false,unlocked:false,password:'',deadline:0,idleMs:900000,serial:0,items:[],drafts:[],histories:{},preferences:{idleMinutes:15,lowMemory:false,compactMode:false,lockOnHide:false},delayItems:0,delayAuth:0,authEpoch:0,operation:null,requests:[],styles:[],styleSerial:0};
+  const state={initialized:false,unlocked:false,password:'',deadline:0,idleMs:900000,serial:0,items:[],captures:[],drafts:[],histories:{},preferences:{idleMinutes:15,lowMemory:false,compactMode:false,lockOnHide:false},delayItems:0,delayAuth:0,authEpoch:0,operation:null,requests:[],styles:[],styleSerial:0};
   window.__fixture=state;
   const copy=value=>structuredClone(value);
   const add=value=>{const now=new Date().toISOString();const item={id:`fixture-${++state.serial}`,title:'Prompt',body:'Synthetic text',kind:'prompt',project:'',tags:[],pinned:false,notes:'',source:'',createdAt:now,updatedAt:now,revision:1,useCount:0,lastUsedAt:null,deletedAt:null,redactions:0,...value,etag:`"fixture-version-${++state.serial}"`};state.items.push(item);return item;};
@@ -15,7 +15,7 @@
     const url=new URL(String(input),'http://fixture.invalid');const path=url.pathname;const method=options.method??'GET';
     state.requests.push({path,method});
     if(state.unlocked && Date.now()>=state.deadline)state.unlocked=false;
-    if(!['/api/status','/api/diagnostics'].includes(path)&&state.unlocked)renew();
+    if(!['/api/status','/api/diagnostics','/api/capture/status'].includes(path)&&state.unlocked)renew();
     const payload=options.body?JSON.parse(options.body):{};
     if(path==='/api/status')return respond({initialized:state.initialized,unlocked:state.unlocked,idleMinutes:state.idleMs/60000,keyFormat:state.initialized?2:null,lockAt:state.unlocked?state.deadline:null,version:'0.9.0',operation:state.operation});
     if(path==='/api/setup'){
@@ -40,6 +40,10 @@
     if(path==='/api/ai/cancel'){state.aiGeneration=(state.aiGeneration||0)+1;return respond({cancelled:true});}
     if(path==='/api/ai/preview'){
       if(!payload.text?.trim()||payload.text.length>12000)return problem('Invalid text');
+      if(['understand','extract'].includes(payload.action)){
+        const item=state.items.find(item=>item.id===payload.sourceId&&!item.deletedAt);
+        if(!item||item.etag!==payload.sourceETag||item.body!==payload.text)return problem('The saved source changed. Reopen it.',409);
+      }
       const text=payload.text.replace(/gsk_[A-Za-z0-9_-]{12,}/g,'[REDACTED]');
       return respond({text,action:payload.action,messages:[{role:'system',content:'Synthetic transformation instructions'},{role:'user',content:text}],style:'',reviewDigest:'fixture-preview-digest',redactions:text===payload.text?0:1});
     }
@@ -49,7 +53,22 @@
       state.aiCalls=(state.aiCalls||0)+1;
       if(state.aiDelay)await new Promise(resolve=>setTimeout(resolve,state.aiDelay));
       if(epoch!==state.authEpoch||generation!==(state.aiGeneration||0))return problem('Cancelled',409);
+      if(['understand','extract'].includes(payload.action)){
+        const item=state.items.find(item=>item.id===payload.sourceId&&!item.deletedAt);
+        if(!item||item.etag!==payload.sourceETag)return problem('The saved source changed. Reopen it.',409);
+        const quote=item.body.split('\n').find(line=>line.trim())||item.body;
+        const structured=payload.action==='understand'?{task:'Synthetic reviewed task',constraints:[{quote}],unknowns:[]}:
+          {blocks:[{title:'Synthetic instruction',quote,reason:'Review the task and project restrictions before reuse.'}]};
+        return respond({text:JSON.stringify(structured),structured,provider:'groq',model:state.ai.model,action:payload.action,saved:false});
+      }
       return respond({text:'Synthetic AI draft: '+payload.text,provider:'groq',model:state.ai.model,action:payload.action,redactions:0,saved:false});
+    }
+    if(path==='/api/refinements/save'){
+      const source=state.items.find(item=>item.id===payload.sourceId&&!item.deletedAt);
+      if(!source||source.etag!==payload.sourceETag)return problem('The saved source changed. Reopen it.',409);
+      if(!payload.reviewed||!['task','project','personal'].includes(payload.scope)||!source.body.includes(payload.quote))return problem('Review an exact source quote and scope');
+      return respond({item:add({title:payload.title,body:payload.quote,kind:'template',project:payload.scope==='personal'?'':source.project,
+        source:'Reviewed source extract',tags:['instruction-block','source-extract','scope-'+payload.scope],notes:'Independent reviewed copy from '+source.id}),scope:payload.scope,independentCopy:true},201);
     }
     if(path==='/api/diagnostics')return respond({schema:'promtesaver-diagnostics-v1',version:'0.9.0',
       runtime:{node:'24.16.0',supportedNode:true,expectedNode:'>=24.16.0 <25',platform:'fixture',architecture:'synthetic'},
@@ -106,19 +125,35 @@
     if(path==='/api/summary'){const active=state.items.filter(i=>!i.deletedAt);return respond({library:{all:active.length,pinned:active.filter(i=>i.pinned).length,templates:active.filter(i=>i.kind==='template').length},trash:state.items.filter(i=>i.deletedAt).length,captured:{records:0,pending:0,tombstones:0}});}
     if(path==='/api/recall'&&method==='POST'){
       const terms=[...new Set((payload.text||'').toLowerCase().match(/[a-z]{3,}/g)||[])];
-      const matches=state.items.filter(item=>!item.deletedAt&&item.id!==payload.excludeId).map(item=>{
+      const matches=state.items.filter(item=>!item.deletedAt&&item.id!==payload.excludeId&&item.feedback!=='hidden')
+        .filter(item=>!item.tags.includes('instruction-block')||item.tags.includes('scope-personal')||
+          item.tags.includes('scope-project')&&!!payload.project&&item.project===payload.project).map(item=>{
         const hay=[item.title,item.body,item.project,item.tags.join(' ')].join(' ').toLowerCase();
-        return {id:item.id,etag:item.etag,title:item.title,kind:item.kind,project:item.project,source:item.source,
-          provenance:item.kind==='template'?'Template':'Saved prompt',
+        return {id:item.id,etag:item.etag,revision:item.revision,feedback:item.feedback||null,
+          title:item.title,kind:item.kind,project:item.project,source:item.source,
+          provenance:item.tags.includes('source-extract')?'Reviewed source quote · independent copy':item.kind==='template'?'Template':'Saved prompt',
+          scope:item.tags.includes('instruction-block')?item.tags.find(tag=>tag.startsWith('scope-'))?.slice(6):undefined,
           updatedAt:item.updatedAt,matchedTerms:terms.filter(term=>hay.includes(term)),preview:item.body.slice(0,240)};
       }).filter(item=>item.matchedTerms.length).slice(0,5);
       return respond({matches});
     }
     if(path==='/api/facets'){const names=key=>[...new Set(state.items.filter(i=>!i.deletedAt).flatMap(i=>key==='tags'?i.tags:[i.project]).filter(Boolean))].map(name=>({name,count:state.items.filter(i=>!i.deletedAt&&(key==='tags'?i.tags.includes(name):i.project===name)).length}));return respond({projects:names('project'),tags:names('tags')});}
-    if(path==='/api/bridge/status')return respond({active:false,expiresAt:null});
+    if(path==='/api/capture/status')return respond(state.captureStatus||{state:'unpaired',browser:{paired:false,authorized:false,hosts:[],expiresAt:null},native:{available:false,reason:'Not implemented in this fixture.'}});
+    if(path==='/api/capture/review'){
+      const limit=Number(url.searchParams.get('limit')||20);
+      return respond({scope:'recent-page',method:'offline-heuristics',automaticCloud:false,items:state.captures.slice(0,limit).map(item=>({id:item.id,text:item.text,source:item.surface.appId,recordedAt:item.recordedAt,quality:item.quality,suggestions:item.text.includes('  ')?[{message:'Extra spaces between words. Review before replacing.'}]:[],changed:false,checkSkipped:item.text.length>12000})),more:state.captures.length>limit});
+    }
+    if(path==='/api/capture/pause'){state.captureStatus={state:'unpaired',browser:{paired:false,authorized:false,hosts:[]},native:{...(state.captureStatus?.native||{available:false}),enabled:false,state:state.captureStatus?.native?.available?'paused':'unavailable'}};return respond({paused:true});}
+    if(path==='/api/capture/native'){
+      if(payload.enabled&&payload.consent!==true)return problem('Explicit source approval required');
+      if(!state.captureStatus?.native?.available)return problem('Use the Windows desktop app for this source',409);
+      state.captureStatus.native={...state.captureStatus.native,enabled:payload.enabled,state:payload.enabled?'running':'paused'};
+      state.captureStatus.state=payload.enabled?'ready':'unpaired';return respond(state.captureStatus.native);
+    }
+    if(path==='/api/bridge/status')return respond({active:!!state.captureStatus?.browser?.paired,expiresAt:state.captureStatus?.browser?.expiresAt||null});
     if(path==='/api/bridge/start')return respond({pairingCode:'psv2:12345:'+'c'.repeat(64)});
-    if(path==='/api/bridge/revoke')return respond({revoked:true});
-    if(path==='/api/captured')return respond({items:[]});
+    if(path==='/api/bridge/revoke'){state.captureStatus=null;return respond({revoked:true});}
+    if(path==='/api/captured'){const offset=Number(url.searchParams.get('offset')||0),limit=Number(url.searchParams.get('limit')||40);return respond({items:copy(state.captures.slice(offset,offset+limit)),total:state.captures.length});}
     if(path==='/api/examples'){
       if(state.items.length)return problem('Examples are only available for an empty library',409);
       for(const [title,body,kind,project,tags]of [
@@ -166,12 +201,20 @@
       const item=state.items.find(i=>i.id===match[1]);if(!item)return problem('Library item not found',404);
       const precondition=options.headers?.['If-Match'];if(precondition&&precondition!==item.etag)return new Response(JSON.stringify({error:'This prompt changed in another window. Reopen it or save your draft as a new prompt.',code:'EDIT_CONFLICT'}),{status:412,headers:{'Content-Type':'application/json'}});
       const action=match[2];if(action==='history')return respond({revisions:state.histories[item.id]??[]});
+      if(action==='feedback'){
+        if(!precondition)return problem('Reopen the saved item before recording feedback.',428);
+        if(payload.revision!==item.revision)return problem('This prompt changed in another window.',412);
+        if(![null,'worked','not-useful','hidden'].includes(payload.feedback))return problem('Invalid feedback');
+        if(payload.feedback===null){delete item.feedback;delete item.feedbackRevision;delete item.feedbackAt;}
+        else {item.feedback=payload.feedback;item.feedbackRevision=item.revision;item.feedbackAt=new Date().toISOString();}
+        return respond({item});
+      }
       if(action==='use'){item.useCount++;return respond({item});}
       if(action==='duplicate')return respond({item:add({...copy(item),id:`fixture-${++state.serial}`,title:'Copy of '+item.title}),redactions:0},201);
       if(action==='undelete'){item.deletedAt=null;item.etag=`"fixture-version-${++state.serial}"`;return respond({item});}
       if(action==='purge'){state.items=state.items.filter(i=>i.id!==item.id);return respond({deleted:true});}
       if(method==='DELETE'){item.deletedAt=new Date().toISOString();item.etag=`"fixture-version-${++state.serial}"`;return respond({deleted:true});}
-      if(method==='PUT'){(state.histories[item.id]??=[]).unshift(copy(item));Object.assign(item,payload,{revision:item.revision+1,etag:`"fixture-version-${++state.serial}"`});return respond({item,redactions:0});}
+      if(method==='PUT'){(state.histories[item.id]??=[]).unshift(copy(item));delete item.feedback;delete item.feedbackRevision;delete item.feedbackAt;Object.assign(item,payload,{revision:item.revision+1,etag:`"fixture-version-${++state.serial}"`});return respond({item,redactions:0});}
       return respond({item});
     }
     return problem('Not found',404);

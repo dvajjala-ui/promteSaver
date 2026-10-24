@@ -2,3 +2,4 @@
 .pairing{border-top:1px solid #39414c;margin-top:21px;padding-top:16px}.pairing p{font-size:12px;line-height:1.55}input{display:block;width:100%;padding:10px;background:#161e24;color:#eef5f0;border:1px solid #36484f;border-radius:8px;margin:8px 0 10px;box-sizing:border-box}#promptTitle{margin:7px 0 10px}.pairing .button,#saveToVault{width:100%;margin-top:8px}.pairing .hint{margin-top:10px;font-size:11px;overflow-wrap:anywhere}.message{max-width:100%;overflow-wrap:anywhere}
 
 .check{display:flex;align-items:flex-start;gap:9px;line-height:1.5}.check input{width:16px;height:16px;flex:none;margin:0}hr{border:0;border-top:1px solid #365447;margin:22px 0}.auto-site h1{font-size:25px}
+.gap-history{margin-top:18px;padding-top:14px;border-top:1px solid #345047}.gap-history p{font-size:12px;line-height:1.5}.gap-history ul{max-height:150px;overflow:auto;padding-left:18px;font-size:11px;line-height:1.5}.gap-history li{margin:5px 0}

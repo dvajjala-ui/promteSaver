@@ -1,0 +1,50 @@
+{
+  "version": "0.9.0",
+  "records": 5000,
+  "node": "v24.16.0",
+  "platform": "win32",
+  "architecture": "x64",
+  "seedMs": 7988.01,
+  "distinctQueryCacheMiss": {
+    "samples": 10,
+    "p50Ms": 132.24,
+    "p95Ms": 179.43,
+    "maximumMs": 179.43
+  },
+  "explicitRecall": {
+    "samples": 10,
+    "p50Ms": 123.77,
+    "p95Ms": 142.14,
+    "maximumMs": 142.14
+  },
+  "identicalQueryCacheHit": {
+    "samples": 20,
+    "p50Ms": 1.46,
+    "p95Ms": 3.61,
+    "maximumMs": 4.15
+  },
+  "deepPageMs": 164.59,
+  "lowMemory": {
+    "coldMs": 121.78,
+    "warm": {
+      "samples": 20,
+      "p50Ms": 0.62,
+      "p95Ms": 1.09,
+      "maximumMs": 1.31
+    }
+  },
+  "facets": {
+    "coldMs": 111.75,
+    "warmMs": 0.12
+  },
+  "rssMiB": 89.22,
+  "heapUsedMiB": 13.64,
+  "dbAndWalMiB": 11.41,
+  "limitations": [
+    "Synthetic data on this host only",
+    "RSS is a point-in-time Node process measurement, not peak or whole-app memory",
+    "Browser and webview memory excluded",
+    "Cold full-text search and explicit recall still decrypt/scan O(n) rows",
+    "Warm results are keyed cache hits, not a general search-speed guarantee"
+  ]
+}

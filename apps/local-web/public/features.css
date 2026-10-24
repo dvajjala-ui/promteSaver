@@ -80,4 +80,7 @@
 .recall-result strong {font-size:13px;color:#eef4ef;}
 .recall-result p {font-size:12px;line-height:1.45;white-space:pre-wrap;margin:5px 0;color:#c0d3cb;}
 .recall-result .btn {flex:0 0 auto;font-size:11px;padding:8px;}
+.recall-controls{display:flex;flex:0 0 180px;flex-direction:column;gap:6px}.recall-feedback-label{display:block;font-size:11px;color:#bbd7c7}.recall-feedback-label select{display:block;width:100%;margin-top:4px;background:#182720;color:#ecf7ef;border:1px solid #52715e;border-radius:6px;padding:5px}.recall-controls .btn{align-self:start}
+@media(max-width:540px){.recall-controls{flex-basis:auto;width:100%}}
 @media(max-width:540px){.recall-result{flex-direction:column}.recall-result .btn{align-self:flex-start}}
+.capture-receipt{font-size:11px;line-height:1.5;color:#b7cebf;border-left:2px solid #6b9a7d;padding:6px 9px;background:#16241e}

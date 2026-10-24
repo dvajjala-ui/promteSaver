@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Load the unpacked MV3 worker in full Chromium; no live-site data."""
 from pathlib import Path
-import json, sys, tempfile
+import argparse, json, sys, tempfile
 from playwright.sync_api import sync_playwright
 ROOT=Path(__file__).resolve().parents[1]
-out=ROOT/'docs/verification/windows-2026-10-23/extension-worker.json'
+parser=argparse.ArgumentParser()
+parser.add_argument('--browser-executable',help='Full Chromium executable, not Chrome Headless Shell.')
+parser.add_argument('--output',default=str(ROOT/'.local/verification/extension-worker.json'))
+args=parser.parse_args();out=Path(args.output)
 report={'scope':'Real unpacked Chromium MV3 worker, real chrome.storage, and a synthetic approved-origin page. No real-site data or localhost traffic.','passed':[],'errors':[]}
 with tempfile.TemporaryDirectory(prefix='promte-extension-') as profile:
     with sync_playwright() as p:
@@ -13,7 +16,8 @@ with tempfile.TemporaryDirectory(prefix='promte-extension-') as profile:
             ext=str(ROOT/'apps/browser-helper')
             # The default Playwright executable is Chrome Headless Shell, which
             # does not load MV3 extensions. The full Chromium channel does.
-            ctx=p.chromium.launch_persistent_context(profile,headless=True,channel='chromium',args=[f'--disable-extensions-except={ext}',f'--load-extension={ext}'])
+            ctx=p.chromium.launch_persistent_context(profile,headless=True,channel='chromium',executable_path=args.browser_executable,args=[f'--disable-extensions-except={ext}',f'--load-extension={ext}'])
+            report['browser']=ctx.browser.version
             ctx.set_default_timeout(5000)
             worker=ctx.service_workers[0] if ctx.service_workers else ctx.wait_for_event('serviceworker',timeout=8000)
             report['passed'].append('Actual manifest loaded and service worker started')
@@ -42,7 +46,8 @@ with tempfile.TemporaryDirectory(prefix='promte-extension-') as profile:
               const revoked=await handle({type:'STATE'},sender);
               return {active,subframe,incognito,wrongSite,elevate,invalid,revoked};
             }''')
-            assert results['active']['canCapture'] is True
+            assert results['active']['enabled'] is False and results['active']['canCapture'] is False
+            report['passed'].append('Persisted enablement and a valid pairing cannot bypass missing optional host permission')
             for name in ['subframe','incognito','wrongSite','elevate','invalid']:assert results[name]['ok'] is False,name
             assert results['revoked']['canCapture'] is False
             report['passed'].append('Worker rejects frames, incognito, wrong origins, privilege escalation and oversize messages')

@@ -4,8 +4,32 @@ const permittedHosts = new Set([
   'perplexity.ai','www.perplexity.ai','copilot.microsoft.com','poe.com',
   'aistudio.google.com','chat.deepseek.com','grok.com'
 ]);
+const autoHosts=new Set(['chatgpt.com','claude.ai','gemini.google.com']);
 const $ = id => document.getElementById(id);
 function note(text) { $('message').textContent = text; }
+const GAP_LABELS={
+  'paused-or-permission':'Site paused or permission missing',
+  'vault-unpaired':'Vault pairing unavailable',
+  'authorization-changed':'Consent or pairing changed during capture',
+  'vault-locked':'Vault locked or pairing expired',
+  'rate-limit':'Capture rate limit reached',
+  'service-rejected':'Local service rejected the capture',
+  'save-unconfirmed':'Local save could not be confirmed',
+  'capacity':'Two other captures were pending'
+};
+async function showGapHistory(){
+  const list=$('gapList');list.replaceChildren();
+  try{
+    const entries=(await chrome.storage.session.get('promtesaver.gaps'))['promtesaver.gaps'];
+    for(const entry of (Array.isArray(entries)?entries:[]).slice(-20).reverse()){
+      if(!entry||!autoHosts.has(entry.host)||!Object.hasOwn(GAP_LABELS,entry.reason)||
+         typeof entry.at!=='string'||!Number.isFinite(Date.parse(entry.at)))continue;
+      const line=document.createElement('li');line.textContent=`${entry.host} · ${new Date(entry.at).toLocaleString()} · ${GAP_LABELS[entry.reason]}`;list.append(line);
+    }
+  }catch{/* Gap display cannot change capture authority. */}
+  if(!list.children.length){const line=document.createElement('li');line.textContent='No recorded save gaps this browser session.';list.append(line);}
+}
+$('clearGaps').addEventListener('click',async()=>{try{await chrome.storage.session.remove('promtesaver.gaps');await showGapHistory();note('Content-free gap history cleared.');}catch{note('Could not clear gap history. Try again.');}});
 let previewHost = null;
 let bridge = null;
 // Manual pairing/save uses the same bounded, redirect-free loopback trust boundary as the worker.
@@ -36,42 +60,18 @@ async function showBridge() {
 }
 
 $('inspect').addEventListener('click', async () => {
-  $('result').hidden = true; previewHost = null; note('');
+  $('result').hidden = true; previewHost = null; $('preview').value=''; $('promptTitle').value=''; note('');
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab || !tab.id || !tab.url || tab.incognito) throw new Error('Open a supported AI tab first.');
     const u = new URL(tab.url); const host = u.hostname.toLowerCase();
     if (u.protocol !== 'https:' || !permittedHosts.has(host)) throw new Error('Site not on the privacy allowlist. No text read.');
+    await chrome.scripting.executeScript({target:{tabId:tab.id},files:['editor-core.js']});
     const [result] = await chrome.scripting.executeScript({ target: {tabId:tab.id}, func: () => {
-      // Read only the one currently focused, user-visible editor. Do not traverse other page text.
-      const focused = document.activeElement;
-      if (!focused || !(focused instanceof HTMLElement)) return {error:'Focus a prompt editor and try again.'};
-      const editor = focused.closest('textarea, input, [contenteditable="true"], [role="textbox"]');
-      if (!editor || !(editor instanceof HTMLElement)) return {error:'No supported focused editor.'};
-      if (!editor.getClientRects().length || getComputedStyle(editor).visibility !== 'visible') return {error:'Hidden editor excluded.'};
-      if (editor.closest('[aria-hidden="true"], [data-private="true"], [autocomplete="off"][data-sensitive="true"]'))
-        return {error:'Protected editor excluded.'};
-      const description = [editor.id,editor.getAttribute('name'),editor.getAttribute('placeholder'),
-        editor.getAttribute('aria-label'),editor.getAttribute('autocomplete')].join(' ').toLowerCase();
-      if (/(password|secret|token|credit.card|card.number|search|one.time.code|security.code)/i.test(description))
-        return {error:'Sensitive or search input excluded.'};
-      if (editor.hasAttribute('readonly') || editor.hasAttribute('disabled') || editor.getAttribute('aria-readonly') === 'true')
-        return {error:'Editor is read-only.'};
-      let value = '';
-      if (editor instanceof HTMLInputElement) {
-        if (!['text','search'].includes(editor.type) || editor.type === 'search') return {error:'Not an allowed prompt field.'};
-        value = editor.value;
-      } else if (editor instanceof HTMLTextAreaElement) value = editor.value;
-      else {
-        if (!editor.isContentEditable) return {error:'Field is not editable.'};
-        value = editor.innerText || editor.textContent || '';
-      }
-      if (!value.trim()) return {error:'The editor is empty.'};
-      if (value.length > 50000) return {error:'Preview exceeds the 50,000-character limit.'};
-      return {text:value};
+      return {...(globalThis.PromteEditor?.preview(location.href,document) || {error:'Preview unavailable. No text read.'}),host:location.hostname};
     } });
     const value = result?.result;
-    if (!value || typeof value.text !== 'string') throw new Error(value?.error || 'Unable to read focused editor.');
+    if (!value || value.host!==host || typeof value.text !== 'string') throw new Error(value?.error || 'The tab changed or its focused editor is unavailable. Preview again.');
     $('preview').value = value.text; previewHost = host;
     $('promptTitle').value = `Prompt from ${host}`.slice(0,140);
     $('result').hidden = false;
@@ -86,7 +86,7 @@ $('copy').addEventListener('click', async () => {
 $('pair').addEventListener('click', async () => {
   const value = $('pairCode').value.trim();
   const match = /^psv2:(\d{1,5}):([a-f0-9]{64})$/.exec(value);
-  if (!match || Number(match[1]) < 1 || Number(match[1]) > 65535) {note('Invalid pairing code. Generate a new code in the local vault Settings.');return;}
+  if (!match || Number(match[1]) < 1 || Number(match[1]) > 65535) {note('Invalid pairing code. Choose Connect browser in the Windows app, or use Settings in the source app.');return;}
   const port = Number(match[1]);
   $('pair').disabled = true;
   try {
@@ -120,11 +120,12 @@ $('saveToVault').addEventListener('click', async () => {
   finally {$('saveToVault').disabled=false;}
 });
 void showBridge();
+void showGapHistory();
 
 let autoHost=null,sitePermission=false;
 async function currentSite(){
   const [tab]=await chrome.tabs.query({active:true,currentWindow:true});
-  try{const url=new URL(tab.url);autoHost=url.protocol==='https:'&&['chatgpt.com','claude.ai','gemini.google.com'].includes(url.hostname)&&!tab.incognito?url.hostname:null;}catch{autoHost=null;}
+  try{const url=new URL(tab.url);autoHost=url.protocol==='https:'&&autoHosts.has(url.hostname)&&!tab.incognito?url.hostname:null;}catch{autoHost=null;}
   $('siteName').textContent=autoHost||'Open ChatGPT, Claude or Gemini in a normal tab';
   $('enableSite').disabled=!autoHost;$('pauseSite').disabled=!autoHost;
   sitePermission=false;
