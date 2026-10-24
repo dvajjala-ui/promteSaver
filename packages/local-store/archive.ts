@@ -269,6 +269,14 @@ export class EncryptedArchive {
     return this.#saveLinkedCapture(record, 'Desktop inbox', ['desktop-capture','draft-snapshot'],
       'Observed in an explicitly approved local Codex session transcript; provider delivery is not verified.');
   }
+  /** Immutable Notepad editor snapshot; keyboard activity is not a submit signal. */
+  saveKeyboardCapture(record: PromptRecord): {saved:boolean;redactions:number} {
+    if (record.surface.appId !== 'notepad.exe' || record.deviceId !== 'windows-keyboard-notepad' ||
+        record.quality !== 'draft_snapshot' || record.sourceMethod !== 'editor_snapshot')
+      throw new Error('Invalid keyboard capture');
+    return this.#saveLinkedCapture(record, 'Desktop inbox', ['desktop-capture', 'draft-snapshot'],
+      'Observed in an approved Notepad editor after keyboard activity; submission is not verified.');
+  }
   #saveLinkedCapture(record: PromptRecord, project:string, tags:string[], note:string): {saved:boolean;redactions:number} {
     this.#ensureOpen();assertPromptRecord(record);
     return this.#transaction(()=>{

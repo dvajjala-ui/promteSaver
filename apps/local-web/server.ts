@@ -21,6 +21,7 @@ import { DEFAULT_GROQ_MODEL } from '../../packages/local-store/ai-settings.ts';
 import { AUTO_CAPTURE_HOSTS, browserCapture } from './browser-capture.ts';
 import { instructionQuote } from './refinement.ts';
 import { NativeCaptureSession } from './native-capture.ts';
+import { notepadSnapshot } from './keyboard-capture.ts';
 
 const webRoot = fileURLToPath(new URL('./public/', import.meta.url));
 const publicFiles: Record<string, [string, string]> = {
@@ -82,6 +83,15 @@ export async function startLocalWeb(options: LocalWebOptions) {
   const ai = new GroqRunner(options.aiTransport,options.aiTimeoutMs);
   const nativeCapture = new NativeCaptureSession(vault,{...(options.desktop===undefined?{}:{desktop:options.desktop}),
     ...(options.nativeSourceDirectory===undefined?{}:{directory:options.nativeSourceDirectory})});
+  let keyboardApproved = false;
+  let keyboardGap: string | null = null;
+  let keyboardLastSavedAt: string | null = null;
+  let keyboardLastDigest: string | null = null;
+  const keyboardWrites: number[] = [];
+  const stopKeyboard = () => {
+    keyboardApproved = false; keyboardGap = null; keyboardLastSavedAt = null; keyboardLastDigest = null;
+    keyboardWrites.length = 0;
+  };
   let aiSettingsVersion = 0;
   let allowedCaptureHosts = new Set<string>();
   let offeredCaptureHosts = new Set<string>();
@@ -90,7 +100,7 @@ export async function startLocalWeb(options: LocalWebOptions) {
   let idleTimer: ReturnType<typeof setTimeout> | undefined;
   const idleMs = () => (options.idleMinutes ?? preferences.idleMinutes) * 60_000;
   const lockVault = () => {
-    nativeCapture.pause();
+    nativeCapture.pause(); stopKeyboard();
     secureWork.cancel(); ai.cancel(); allowedCaptureHosts.clear(); offeredCaptureHosts.clear();
     clearTimeout(idleTimer); idleTimer = undefined;
     try { vault.lock(); } finally { writerToken = undefined; writerOrigin = undefined; writerExpiresAt = 0;
@@ -221,10 +231,11 @@ export async function startLocalWeb(options: LocalWebOptions) {
         const paired=unlocked&&!!writerToken&&Date.now()<writerExpiresAt;
         const authorized=paired&&allowedCaptureHosts.size>0;
         const native=nativeCapture.status();
-        return json(res,200,{state:!unlocked?'locked':native.state==='running'||authorized?'ready':paired?'paused':'unpaired',
+        return json(res,200,{state:!unlocked?'locked':native.state==='running'||authorized||keyboardApproved?'ready':paired?'paused':'unpaired',
           browser:{paired,active:paired,authorized,hosts:paired?[...allowedCaptureHosts]:[],
             expiresAt:paired?new Date(writerExpiresAt).toISOString():null,pairingPending:!!pairSecret&&Date.now()<pairExpiresAt},
-          native,dailyReview:{available:true,automaticCloud:false}});
+          native,keyboard:{available:options.desktop===true,enabled:unlocked&&keyboardApproved,source:'notepad.exe',
+            code:keyboardGap,lastSavedAt:keyboardLastSavedAt},dailyReview:{available:true,automaticCloud:false}});
       }
       if (path === '/api/setup' && req.method === 'POST') {
         await runSecure('setup', async signal => {
@@ -257,8 +268,30 @@ export async function startLocalWeb(options: LocalWebOptions) {
           'Codex source exceeds the preview limit. Capture remains off.':'Codex local session source is unavailable. Capture remains off.',code:native.code,native});
         return json(res,200,nativeCapture.status());
       }
+      if(path==='/api/capture/keyboard/consent'&&req.method==='POST') {
+        const payload=await readBody(1000);
+        if(options.desktop!==true)throw new HttpProblem(409,'Use the Windows desktop app for this source');
+        if(Object.keys(payload).some(key=>!['enabled','source','consent'].includes(key))||
+          payload.source!=='notepad.exe'||typeof payload.enabled!=='boolean'||
+          (payload.enabled&&payload.consent!==true))throw new HttpProblem(400,'Explicit Notepad approval required');
+        stopKeyboard(); keyboardApproved=payload.enabled;
+        return json(res,200,{enabled:keyboardApproved,source:'notepad.exe'});
+      }
+      if(path==='/api/capture/keyboard/snapshot'&&req.method==='POST') {
+        const payload=await readBody(250_000);
+        if(options.desktop!==true||!keyboardApproved)throw new HttpProblem(409,'Notepad capture is not approved for this session');
+        let record;
+        try {record=notepadSnapshot(payload);} catch {throw new HttpProblem(400,'Invalid Notepad snapshot');}
+        const digest=createHash('sha256').update(record.text).digest('hex');
+        if(digest===keyboardLastDigest)return json(res,200,{saved:false,duplicate:true,quality:'draft_snapshot'});
+        const now=Date.now();while(keyboardWrites.length&&keyboardWrites[0]!<now-60_000)keyboardWrites.shift();
+        if(keyboardWrites.length>=15){keyboardGap='SOURCE_RATE_LIMIT';throw new HttpProblem(429,'Notepad capture paused by rate limit; check recent saves');}
+        const result=archive.saveKeyboardCapture(record);
+        if(result.saved){keyboardWrites.push(now);keyboardLastDigest=digest;keyboardLastSavedAt=record.recordedAt;keyboardGap=null;}
+        return json(res,result.saved?201:200,{saved:result.saved,quality:'draft_snapshot',redactions:result.redactions});
+      }
       if(path==='/api/capture/pause'&&req.method==='POST') {
-        await readBody(1000);nativeCapture.pause();
+        await readBody(1000);nativeCapture.pause();stopKeyboard();
         writerToken=undefined;writerOrigin=undefined;writerExpiresAt=0;pairSecret=undefined;pairExpiresAt=0;
         allowedCaptureHosts.clear();offeredCaptureHosts.clear();
         return json(res,200,{paused:true});

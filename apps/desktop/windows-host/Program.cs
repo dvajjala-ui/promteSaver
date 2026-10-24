@@ -247,6 +247,7 @@ namespace PromteSaver.WindowsPreview {
 
     internal sealed class VaultWindow : Form {
         readonly LocalService service = new LocalService();
+        readonly NotepadKeyboardCapture keyboardCapture;
         readonly NotifyIcon tray;
         readonly System.Windows.Forms.Timer statusTimer = new System.Windows.Forms.Timer { Interval = 10000 };
         readonly System.Windows.Forms.Timer deadlineTimer = new System.Windows.Forms.Timer { Interval = 200 };
@@ -255,20 +256,24 @@ namespace PromteSaver.WindowsPreview {
         readonly Panel gate = new Panel(), workspace = new Panel();
         readonly TextBox search = new TextBox(), raw = new TextBox(), suggestions = new TextBox(), pairing = new TextBox();
         readonly ListBox timeline = new ListBox();
-        readonly Button unlock = new Button(), native = new Button(), pause = new Button(), browser = new Button(), refresh = new Button(), next = new Button(), previous = new Button();
+        readonly Button unlock = new Button(), native = new Button(), notepad = new Button(), pause = new Button(), browser = new Button(), refresh = new Button(), next = new Button(), previous = new Button();
         readonly ComboBox browserSite = new ComboBox();
-        readonly CheckBox nativeConsent = new CheckBox(), loginStartup = new CheckBox();
+        readonly CheckBox nativeConsent = new CheckBox(), notepadConsent = new CheckBox(), loginStartup = new CheckBox();
         readonly CancellationTokenSource lifetime = new CancellationTokenSource();
         CancellationTokenSource session = new CancellationTokenSource();
         bool initialized, unlocked, quitting, checking, nativeEnabled, reviewMode, minimizedNotice, changingLoginStartup;
         int epoch, offset, total;
         long localLockAt;
+        string localKeyboardGap;
         readonly string fixtureDirectory;
         readonly bool pilotTemporary;
         readonly string vaultDirectory;
 
         internal VaultWindow(string fixtureDirectory, bool pilotTemporary) {
             this.fixtureDirectory = fixtureDirectory; this.pilotTemporary = pilotTemporary;
+            keyboardCapture = new NotepadKeyboardCapture(SaveNotepadSnapshot, code => {
+                if (unlocked) { localKeyboardGap = code; state.Text = "Notepad capture gap · " + code; tray.Text = "promteSaver · capture gap"; }
+            });
             vaultDirectory = fixtureDirectory ?? DesktopCredential.DefaultVaultDirectory();
             Text = "promteSaver · Windows preview"; Icon = new Icon(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "promteSaver.ico"));
             StartPosition = FormStartPosition.CenterScreen; MinimumSize = new Size(950, 700); Size = new Size(1170, 820);
@@ -284,7 +289,7 @@ namespace PromteSaver.WindowsPreview {
             gate.BringToFront(); header.BringToFront(); footer.BringToFront();
             var menu = new ContextMenuStrip(); menu.Items.Add("Open promteSaver", null, delegate { OpenWindow(); });
             menu.Items.Add("Lock vault and stop capture", null, async delegate { await Lock(); });
-            menu.Items.Add("Pause all capture", null, async delegate { await Execute(async () => { await service.Request("/api/capture/pause", "POST", new { }, session.Token); await CaptureStatus(); }); });
+            menu.Items.Add("Pause all capture", null, async delegate { keyboardCapture.Stop(); localKeyboardGap = null; await Execute(async () => { await service.Request("/api/capture/pause", "POST", new { }, session.Token); await CaptureStatus(); }); });
             menu.Items.Add(new ToolStripSeparator()); menu.Items.Add("Quit promteSaver", null, delegate { Quit(); });
             tray = new NotifyIcon { Icon = Icon, Text = "promteSaver · starting", ContextMenuStrip = menu, Visible = true };
             tray.DoubleClick += delegate { OpenWindow(); };
@@ -320,12 +325,16 @@ namespace PromteSaver.WindowsPreview {
             var sources = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
             nativeConsent.Text = "Remember new Codex prompts from local session logs (experimental)"; nativeConsent.Size = new Size(560, 38); nativeConsent.ForeColor = ForeColor; nativeConsent.AccessibleName = nativeConsent.Text; nativeConsent.Visible = false; nativeConsent.TabStop = false; sources.Controls.Add(nativeConsent);
             StyleButton(native, "Enable Codex", 145); native.Click += async delegate { await ToggleNative(); }; native.Visible = false; native.TabStop = false; sources.Controls.Add(native);
+            notepadConsent.Text = "Save Notepad editor text"; notepadConsent.Size = new Size(245, 38);
+            notepadConsent.ForeColor = ForeColor; notepadConsent.AccessibleName = "Approve saving any foreground Notepad editor text after keyboard activity for this unlocked session";
+            sources.Controls.Add(notepadConsent);
+            StyleButton(notepad, "Start Notepad", 150); notepad.Click += async delegate { await ToggleNotepad(); }; sources.Controls.Add(notepad);
             browserSite.DropDownStyle = ComboBoxStyle.DropDownList; browserSite.Width = 125; browserSite.Height = 38;
             browserSite.AccessibleName = "Choose one AI site to connect";
             browserSite.Items.AddRange(new object[] { "ChatGPT", "Claude", "Gemini" }); browserSite.SelectedIndex = 0; sources.Controls.Add(browserSite);
             StyleButton(browser, "Connect browser", 155); browser.Click += async delegate { await PairBrowser(); }; sources.Controls.Add(browser); layout.Controls.Add(sources, 0, 1);
             loginStartup.Text = "Start with Windows"; loginStartup.Size = new Size(190, 38); loginStartup.ForeColor = ForeColor;
-            loginStartup.AccessibleName = "Start promteSaver with Windows; capture stays off until the vault is opened and a site is connected";
+            loginStartup.AccessibleName = "Start promteSaver with Windows; capture stays off until the vault is opened and a source is approved";
             try { loginStartup.Checked = !pilotTemporary && fixtureDirectory == null && WindowsLoginStartup.Enabled(Application.ExecutablePath); }
             catch { loginStartup.Checked = false; }
             loginStartup.Enabled = fixtureDirectory == null;
@@ -334,7 +343,7 @@ namespace PromteSaver.WindowsPreview {
                 try {
                     WindowsLoginStartup.SetEnabled(Application.ExecutablePath, loginStartup.Checked);
                     footer.Text = loginStartup.Checked
-                        ? "Starts with Windows. Open the vault and reconnect an approved browser site to resume capture."
+                        ? "Starts with Windows. Open the vault and approve a source to resume capture."
                         : "Windows login startup is off. Use this app's Quit action to stop it now.";
                 } catch {
                     changingLoginStartup = true; loginStartup.Checked = !loginStartup.Checked; changingLoginStartup = false;
@@ -342,7 +351,7 @@ namespace PromteSaver.WindowsPreview {
                 }
             }; sources.Controls.Add(loginStartup);
             var tools = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
-            StyleButton(pause, "Pause all", 120); pause.Click += async delegate { await Execute(async () => { await service.Request("/api/capture/pause", "POST", new { }, session.Token); await CaptureStatus(); }); }; tools.Controls.Add(pause);
+            StyleButton(pause, "Pause all", 120); pause.Click += async delegate { keyboardCapture.Stop(); localKeyboardGap = null; await Execute(async () => { await service.Request("/api/capture/pause", "POST", new { }, session.Token); await CaptureStatus(); }); }; tools.Controls.Add(pause);
             StyleButton(refresh, "Refresh prompts", 155); refresh.Click += async delegate { reviewMode = false; offset = 0; await LoadPage(); }; tools.Controls.Add(refresh);
             var review = Button("Review recent wording", 195); review.Click += async delegate { reviewMode = true; offset = 0; await LoadPage(); }; tools.Controls.Add(review);
             StyleText(search, false); search.Width = 220; search.AccessibleName = "Search saved prompts"; tools.Controls.Add(search);
@@ -362,7 +371,7 @@ namespace PromteSaver.WindowsPreview {
             var paging = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, Padding = new Padding(0, 4, 0, 0) };
             StyleButton(previous, "Previous", 100); previous.Click += async delegate { offset = Math.Max(0, offset - 10); await LoadPage(); }; paging.Controls.Add(previous);
             StyleButton(next, "Next", 100); next.Click += async delegate { offset += 10; await LoadPage(); }; paging.Controls.Add(next); pageInfo.Size = new Size(580, 35); pageInfo.Padding = new Padding(8); paging.Controls.Add(pageInfo); layout.Controls.Add(paging, 0, 5);
-            var boundaries = Label("Only approved browser sites are supported. Codex and other desktop apps are coming soon; generic typing and passwords are not recorded.", 9, FontStyle.Regular); boundaries.Dock = DockStyle.Fill; boundaries.ForeColor = Color.FromArgb(150, 170, 184); layout.Controls.Add(boundaries, 0, 6);
+            var boundaries = Label("Approved Notepad editors save any text as drafts, not sent prompts. Browser capture needs the optional helper; other apps are not recorded.", 9, FontStyle.Regular); boundaries.Dock = DockStyle.Fill; boundaries.ForeColor = Color.FromArgb(150, 170, 184); layout.Controls.Add(boundaries, 0, 6);
             workspace.Controls.Add(layout);
         }
 
@@ -390,10 +399,13 @@ namespace PromteSaver.WindowsPreview {
         }
 
         void ShowGate() {
+            keyboardCapture.Stop();
+            localKeyboardGap = null;
             deadlineTimer.Stop(); localLockAt = 0;
             unlocked = false; epoch++; session.Cancel(); session.Dispose(); session = new CancellationTokenSource();
             raw.Clear(); suggestions.Clear(); pairing.Clear(); pairing.Visible = false; search.Clear(); timeline.Items.Clear();
-            nativeEnabled = false; nativeConsent.Checked = false; native.Text = "Enable Codex"; workspace.Visible = false; gate.Visible = true; gate.BringToFront();
+            nativeEnabled = false; nativeConsent.Checked = false; native.Text = "Enable Codex";
+            notepadConsent.Checked = false; notepad.Text = "Start Notepad"; workspace.Visible = false; gate.Visible = true; gate.BringToFront();
             gateTitle.Text = initialized ? "Welcome back." : "Your private prompt memory";
             gateMessage.Text = initialized ? "Open your Windows-protected vault, then approve the sources you want to remember." :
                 "Create a local encrypted vault protected by this Windows account. Back up your data before changing devices or Windows accounts.";
@@ -462,19 +474,73 @@ namespace PromteSaver.WindowsPreview {
             var result = await service.Request("/api/capture/status", "GET", null, session.Token);
             if (observedEpoch != epoch || !unlocked) return;
             var source = Json.Object(Json.Get(result, "native")); var browserState = Json.Object(Json.Get(result, "browser"));
+            var keyboard = Json.Object(Json.Get(result, "keyboard"));
             nativeEnabled = Json.Flag(source, "enabled"); native.Text = nativeEnabled ? "Pause Codex" : "Enable Codex";
             native.Enabled = fixtureDirectory == null && (Json.Flag(source, "available") || nativeEnabled);
+            bool keyboardEnabled = Json.Flag(keyboard, "enabled") && keyboardCapture.Enabled;
+            notepad.Enabled = (fixtureDirectory == null || pilotTemporary) && Json.Flag(keyboard, "available");
+            notepadConsent.Enabled = notepad.Enabled && !keyboardEnabled;
+            notepad.Text = keyboardEnabled ? "Pause Notepad" : "Start Notepad";
             var sourceState = Json.Text(source, "state");
             bool browserPaired = Json.Flag(browserState, "paired");
             string approvedHost = ""; foreach (var item in Json.Items(browserState, "hosts")) { approvedHost = Convert.ToString(item); break; }
             string code = Json.Text(source, "code");
             bool sourceGap = code.Length > 0;
-            string description = sourceState == "running" ? "Remembering new Codex prompts" : browserPaired ? "Browser paired" + (approvedHost.Length > 0 ? " for " + approvedHost : "") + " · enable site in helper" : "Capture off · connect browser";
+            string description = keyboardEnabled ? "Saving approved Notepad editor text" : sourceState == "running" ? "Remembering new Codex prompts" : browserPaired ? "Browser paired" + (approvedHost.Length > 0 ? " for " + approvedHost : "") + " · enable site in helper" : "Capture off · choose a source";
+            string keyboardCode = Json.Text(keyboard, "code");
+            if (keyboardCode.Length == 0) keyboardCode = localKeyboardGap ?? "";
+            if (keyboardCode.Length > 0) description = "Notepad capture gap · " + keyboardCode;
             if (sourceGap) description = "Capture gap · " + code + " · check recent saves";
-            state.Text = description; tray.Text = "promteSaver · " + (sourceGap ? "capture gap" : sourceState == "running" ? "Codex capture on" : browserPaired ? "browser pairing ready" : "capture off");
+            state.Text = description; tray.Text = "promteSaver · " + (sourceGap || keyboardCode.Length > 0 ? "capture gap" : keyboardEnabled ? "Notepad capture on" : sourceState == "running" ? "Codex capture on" : browserPaired ? "browser pairing ready" : "capture off");
             hint.Text = sourceGap ? "Some Codex events may not have been saved. Check recent captures; pausing and restarting cannot recover missed text." :
+                keyboardCode.Length > 0 ? "Some Notepad text may not have been saved. Check recent snapshots; pause and retry this source." :
                 sourceState == "running" ? "New Codex prompts are saved from approved local session logs. Refresh to see the latest." :
-                "Connect the browser companion and enable a site there. Codex capture is disabled until private-session exclusions are verified.";
+                keyboardEnabled ? "Any changed text in an approved Notepad editor is saved after a short pause. Refresh prompts to review it." :
+                "Approve Notepad here or connect the browser companion. Other desktop sources remain unavailable.";
+        }
+
+        async Task SaveNotepadSnapshot(string text) {
+            if (!unlocked || !keyboardCapture.Enabled) return;
+            int observedEpoch = epoch;
+            try {
+                var response = await service.Request("/api/capture/keyboard/snapshot", "POST",
+                    new { eventId = Guid.NewGuid().ToString(), text, recordedAt = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ", System.Globalization.CultureInfo.InvariantCulture) }, session.Token);
+                if (observedEpoch == epoch && unlocked && Json.Flag(response, "saved")) {
+                    localKeyboardGap = null;
+                    footer.Text = "Notepad draft saved locally. Refresh prompts to review the snapshot.";
+                    await CaptureStatus();
+                }
+            } catch (OperationCanceledException) { }
+            catch (ApiProblem error) {
+                if (observedEpoch == epoch && unlocked) {
+                    localKeyboardGap = error.Status == 429 ? "RATE_LIMIT" : "SAVE_FAILED";
+                    state.Text = "Notepad capture gap · " + localKeyboardGap;
+                    tray.Text = "promteSaver · capture gap";
+                }
+            }
+        }
+
+        async Task ToggleNotepad() {
+            if (keyboardCapture.Enabled) {
+                keyboardCapture.Stop();
+                localKeyboardGap = null;
+                await Execute(async () => {
+                    await service.Request("/api/capture/keyboard/consent", "POST", new { enabled = false, source = "notepad.exe" }, session.Token);
+                    await CaptureStatus(); footer.Text = "Notepad capture paused.";
+                });
+                return;
+            }
+            if (!notepadConsent.Checked) { footer.Text = "Approve the Notepad checkbox before starting this source."; return; }
+            await Execute(async () => {
+                localKeyboardGap = null;
+                await service.Request("/api/capture/keyboard/consent", "POST", new { enabled = true, source = "notepad.exe", consent = true }, session.Token);
+                try { keyboardCapture.Start(); } catch { keyboardCapture.Stop(); }
+                if (!keyboardCapture.Enabled) {
+                    await service.Request("/api/capture/keyboard/consent", "POST", new { enabled = false, source = "notepad.exe" }, session.Token);
+                    throw new InvalidOperationException("Windows keyboard events are unavailable.");
+                }
+                await CaptureStatus(); footer.Text = "Notepad capture is on for this unlocked session. Pause, lock or Quit to stop it.";
+            });
         }
 
         async Task ToggleNative() {
@@ -509,7 +575,7 @@ namespace PromteSaver.WindowsPreview {
                 foreach (var item in Json.Items(result, "items")) timeline.Items.Add(new PromptRow { Value = Json.Object(item), Review = reviewMode });
                 int.TryParse(Json.Text(result, "total"), out total);
                 previous.Enabled = !reviewMode && offset > 0; next.Enabled = !reviewMode && offset + timeline.Items.Count < total;
-            pageInfo.Text = reviewMode ? "Recent prompts · offline spacing checks · original text preserved" : (total == 0 ? "No captured prompts yet. Enable a source, then send a new prompt." : (offset + 1) + "–" + (offset + timeline.Items.Count) + " of " + total + " captured prompts");
+                pageInfo.Text = reviewMode ? "Recent prompts · offline spacing checks · original text preserved" : (total == 0 ? "No captured prompts yet. Enable a source, then type a Notepad draft or send a browser prompt." : (offset + 1) + "–" + (offset + timeline.Items.Count) + " of " + total + " captured prompts");
                 if (timeline.Items.Count > 0) timeline.SelectedIndex = 0;
             });
         }
@@ -524,7 +590,8 @@ namespace PromteSaver.WindowsPreview {
             if (DateTime.TryParse(date, null, System.Globalization.DateTimeStyles.RoundtripKind, out stamp)) date = stamp.ToLocalTime().ToString("ddd, dd MMM · h:mm tt");
             string redaction = Json.Text(row.Value, "redactions");
             string quality = Json.Text(row.Value, "quality");
-            string qualityLabel = quality == "draft_snapshot" ? "Send snapshot · delivery unverified" : quality;
+            string qualityLabel = quality == "draft_snapshot" ?
+                (source == "notepad.exe" ? "Editor draft snapshot · no send observed" : "Send snapshot · delivery unverified") : quality;
             detailMeta.Text = source + " · " + date + "\n" + qualityLabel + (redaction != "" && redaction != "0" ? " · sensitive matches redacted" : "");
             var notes = new StringBuilder();
             foreach (var item in Json.Items(row.Value, "suggestions")) { var issue = Json.Object(item); notes.Append("• ").Append(Json.Text(issue, "message")).AppendLine(); }
@@ -561,7 +628,7 @@ namespace PromteSaver.WindowsPreview {
                 if (!minimizedNotice) { minimizedNotice = true; tray.ShowBalloonTip(4500, "promteSaver is in the tray", "Approved capture continues while unlocked. Use the tray to open, pause, lock or quit.", ToolTipIcon.Info); }
                 return;
             }
-            statusTimer.Stop(); deadlineTimer.Stop(); lifetime.Cancel(); session.Cancel(); SystemEvents.SessionSwitch -= SessionSwitch; tray.Visible = false; tray.Dispose();
+            keyboardCapture.Dispose(); statusTimer.Stop(); deadlineTimer.Stop(); lifetime.Cancel(); session.Cancel(); SystemEvents.SessionSwitch -= SessionSwitch; tray.Visible = false; tray.Dispose();
             service.Dispose(); lifetime.Dispose(); session.Dispose();
         }
         void Quit() { quitting = true; Close(); }
@@ -622,6 +689,13 @@ namespace PromteSaver.WindowsPreview {
                     var captured = await service.Request("/api/captured?limit=1&offset=0", "GET", null, cancellation);
                     var capturedItems = new List<object>(Json.Items(captured, "items"));
                     if (capturedItems.Count != 1 || Json.Text(Json.Object(capturedItems[0]), "quality") != "draft_snapshot") throw new InvalidOperationException();
+                    stage = "synthetic Notepad keyboard snapshot";
+                    await service.Request("/api/capture/keyboard/consent", "POST", new { enabled = true, source = "notepad.exe", consent = true }, cancellation);
+                    var keyboardSaved = await service.Request("/api/capture/keyboard/snapshot", "POST", new {
+                        eventId = Guid.NewGuid().ToString(), text = "Synthetic Notepad prompt draft for native verification.",
+                        recordedAt = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ") }, cancellation);
+                    if (!Json.Flag(keyboardSaved, "saved") || Json.Text(keyboardSaved, "quality") != "draft_snapshot") throw new InvalidOperationException();
+                    await service.Request("/api/capture/keyboard/consent", "POST", new { enabled = false, source = "notepad.exe" }, cancellation);
                     stage = "library and lock"; await service.Request("/api/items", "POST", new { title = "Synthetic native preview check", body = "Synthetic safe host lifecycle content." }, cancellation);
                     await service.Request("/api/lock", "POST", new { }, cancellation);
                     status = await service.Request("/api/status", "GET", null, cancellation); if (Json.Flag(status, "unlocked")) throw new InvalidOperationException();
@@ -632,7 +706,7 @@ namespace PromteSaver.WindowsPreview {
                     if (DesktopCredential.LoadOrCreate(directory) != secret) throw new InvalidOperationException();
                     secret = null;
                     var items = await service.Request("/api/items?limit=1&view=preview", "GET", null, cancellation);
-                    if (Json.Text(items, "total") != "2") throw new InvalidOperationException();
+                    if (Json.Text(items, "total") != "3") throw new InvalidOperationException();
                     await service.Request("/api/capture/pause", "POST", new { }, cancellation);
                     await service.Request("/api/capture/review?limit=10", "GET", null, cancellation);
                     service.Stop(); if (File.Exists(Path.Combine(directory, ".vault-session.lock"))) throw new InvalidOperationException();
@@ -651,7 +725,7 @@ namespace PromteSaver.WindowsPreview {
                     File.WriteAllBytes(keyPath, original);
                     Array.Clear(tampered, 0, tampered.Length); Array.Clear(original, 0, original.Length);
                 }
-                File.WriteAllText(resultPath, "PASS: native EXE service startup; strict private handshake; Windows CurrentUser-protected random vault secret; missing/tampered credential rejection; isolated encrypted vault setup; capture default-off; synthetic approved browser send accepted as draft_snapshot; saved item; lock; wrong secret rejection; unlock; bounded list; pause; offline review; shutdown lease release.\r\nNOT TESTED: real third-party site capture, tray interaction, installer, signing, clean-device runtime.\r\n");
+                File.WriteAllText(resultPath, "PASS: native EXE service startup; strict private handshake; Windows CurrentUser-protected random vault secret; missing/tampered credential rejection; isolated encrypted vault setup; capture default-off; synthetic approved browser send and Notepad editor snapshot accepted as draft_snapshot; saved item; lock; wrong secret rejection; unlock; bounded list; pause; offline review; shutdown lease release.\r\nNOT TESTED: real Notepad keyboard hook/editor read, real third-party site capture, tray interaction, installer, signing, clean-device runtime.\r\n");
                 return 0;
             } catch {
                 File.WriteAllText(resultPath, "FAIL: native EXE synthetic service smoke stopped at " + stage + ". No prompt contents, paths or session capabilities were logged.\r\n"); return 1;

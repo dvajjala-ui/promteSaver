@@ -2,13 +2,15 @@
 
 See [READINESS_V0_9.md](READINESS_V0_9.md) and [TEST_REPORT_V0_9.md](TEST_REPORT_V0_9.md) for current evidence. A native WinForms Windows preview now compiles and passes synthetic temporary-vault lifecycle checks. Its new vault opens without a password through Windows CurrentUser DPAPI; the older passphrase vault remains separate and has no native migration path. It is an unsigned portable folder, not an installer or clean-device release; the separate Tauri/Rust host still cannot compile on this machine because the Windows SDK import library is missing. Browser capture and explicit Groq source exist, but consented real-site capture and live provider behavior remain unverified. Real Codex transcript capture is disabled in the public Windows preview until private/protected-session exclusions are verified. The v0.8 matrix below is retained as historical context, not current implementation status.
 
+The new Notepad source passed one real keyboard typing/pause pilot on Windows 11 with a temporary encrypted vault. It stores editor draft snapshots under explicit source approval, without raw key values or a send claim. It does not close the broader native-source or all-app capture gate.
+
 ## Current capture-first market gates — 25 October 2026
 
 | Gate | Current evidence | Still needed before sale |
 | --- | --- | --- |
 | Windows desktop setup | Compiled WinForms EXE, bundled Node runtime/license/helper, 42 staged files verified, one-click DPAPI vault, optional off-by-default login launch UI, synthetic self-test in build and extracted ZIP | Login/reboot verification, clean-device install, old-vault migration, cross-account recovery, upgrade/uninstall, signing and distribution/license review |
 | Reliable automatic prompt capture | Browser producer on synthetic composer fixtures; extension worker scoped default-off checks; private local bridge and synthetic send accepted by native vault | Human-granted permission, installed extension and repeated real-site captures on each claimed browser/site; meaningful failure receipts. Browser control still reported disabled in this chat after user enabled Chrome access. |
-| Native application sources | Bounded internal Codex JSONL producer on injected synthetic directory; real source gated off | Verified private/protected-session exclusions and real format before any public opt-in; separate opt-in adapter acceptance for each additional app |
+| Native application sources | Opt-in Notepad keyboard-triggered editor snapshot passed one real Windows 11 typing/pause pilot; bounded internal Codex JSONL producer passed injected synthetic tests but real source remains gated off | Other Notepad versions, live protected/unknown field checks, endurance, reliable send evidence where applicable, and separate opt-in adapter acceptance for each additional app |
 | Daily review and contextual improvement | Explicit bounded offline wording review and manual related-prompt recall | Real usefulness/language evaluation; consented, budgeted end-of-day AI processing and safe cross-app suggestions if added later |
 | Trust and resource cost | Synthetic vault/security tests and backend benchmark; temporary native lifecycle | Independent privacy/security review; whole native+Node+browser startup, idle/peak RSS/CPU on 4/8 GiB devices; accessibility and recovery study |
 
