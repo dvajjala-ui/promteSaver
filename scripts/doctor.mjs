@@ -24,6 +24,8 @@ const report = {
   nodeRuntimeRequired:true,
   nativeRecorderIncluded:false,
   desktopInstallerIncluded:false,
+  nativeNotepadPilotSourcePresent:existsSync(join(root,'apps/desktop/windows-host/NotepadKeyboardCapture.cs')),
+  localUnsignedWindowsSetupPreviewPresent:existsSync(join(root,'.local/promteSaver-Setup.exe')),
   desktopHostSourceIncluded:existsSync(join(root,'apps/desktop/src-tauri/src/main.rs')),
   desktopHostCompiledInThisRelease:false,
   keyEnvelopeFormat:2,

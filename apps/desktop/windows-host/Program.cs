@@ -1,5 +1,5 @@
-// Native Windows developer preview. Uses the reviewed local Node service; no WebView, browser,
-// global keyboard hook, clipboard polling, plaintext credentials on disk or frontend native IPC.
+// Native Windows developer preview. Uses the reviewed local Node service; no WebView,
+// clipboard polling, plaintext credentials on disk or frontend native IPC.
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -238,10 +238,15 @@ namespace PromteSaver.WindowsPreview {
     internal sealed class PromptRow {
         internal Dictionary<string, object> Value;
         internal bool Review;
-        public override string ToString() {
+        internal string Excerpt() {
             var text = Json.Text(Value, "text").Replace("\r", " ").Replace("\n", " ");
             if (text.Length > 100) text = text.Substring(0, 100) + "…";
             return text;
+        }
+        public override string ToString() {
+            var surface = Json.Object(Json.Get(Value, "surface"));
+            string source = Review ? Json.Text(Value, "source") : Json.Text(surface, "appId");
+            return Excerpt() + (source.Length > 0 ? " · " + source : "");
         }
     }
 
@@ -253,10 +258,11 @@ namespace PromteSaver.WindowsPreview {
         readonly System.Windows.Forms.Timer deadlineTimer = new System.Windows.Forms.Timer { Interval = 200 };
         readonly Color background = Color.FromArgb(15, 21, 29), panelColor = Color.FromArgb(23, 32, 42), accent = Color.FromArgb(172, 236, 203);
         readonly Label state = new Label(), hint = new Label(), gateTitle = new Label(), gateMessage = new Label(), footer = new Label(), pageInfo = new Label(), detailMeta = new Label();
-        readonly Panel gate = new Panel(), workspace = new Panel();
+        readonly Panel gate = new Panel(), workspace = new Panel(), settingsPanel = new Panel(), reviewPanel = new Panel();
+        readonly TableLayoutPanel workspaceLayout = new TableLayoutPanel(), detailLayout = new TableLayoutPanel();
         readonly TextBox search = new TextBox(), raw = new TextBox(), suggestions = new TextBox(), pairing = new TextBox();
         readonly ListBox timeline = new ListBox();
-        readonly Button unlock = new Button(), native = new Button(), notepad = new Button(), pause = new Button(), browser = new Button(), refresh = new Button(), next = new Button(), previous = new Button();
+        readonly Button unlock = new Button(), native = new Button(), notepad = new Button(), pause = new Button(), browser = new Button(), refresh = new Button(), next = new Button(), previous = new Button(), settingsButton = new Button();
         readonly ComboBox browserSite = new ComboBox();
         readonly CheckBox nativeConsent = new CheckBox(), notepadConsent = new CheckBox(), loginStartup = new CheckBox();
         readonly CancellationTokenSource lifetime = new CancellationTokenSource();
@@ -280,8 +286,9 @@ namespace PromteSaver.WindowsPreview {
             AutoScaleMode = AutoScaleMode.Dpi; Font = new Font("Segoe UI", 10); BackColor = background; ForeColor = Color.FromArgb(226, 235, 241);
             var header = new Panel { Dock = DockStyle.Top, Height = 91, Padding = new Padding(25, 18, 25, 12), BackColor = panelColor };
             var brand = Label("promteSaver", 22, FontStyle.Bold); brand.Location = new Point(25, 10); brand.AutoSize = true; header.Controls.Add(brand);
-            state.Text = "Starting local vault…"; state.ForeColor = accent; state.Location = new Point(27, 52); state.Size = new Size(760, 25); header.Controls.Add(state);
-            var lockButton = Button("Lock vault", 125); lockButton.Anchor = AnchorStyles.Top | AnchorStyles.Right; lockButton.Location = new Point(Width - 190, 23); lockButton.Click += async delegate { await Lock(); }; header.Controls.Add(lockButton);
+            state.Text = "Starting local vault…"; state.ForeColor = accent; state.Location = new Point(27, 52); state.Size = new Size(650, 25); header.Controls.Add(state);
+            var lockButton = Button("Lock vault", 125); lockButton.Click += async delegate { await Lock(); }; header.Controls.Add(lockButton);
+            header.Resize += delegate { lockButton.Location = new Point(Math.Max(0, header.ClientSize.Width - lockButton.Width - 25), 22); };
             Controls.Add(header);
             footer.Dock = DockStyle.Bottom; footer.Height = 36; footer.Padding = new Padding(25, 8, 8, 0); footer.Font = new Font(Font.FontFamily, 9); footer.ForeColor = Color.FromArgb(150, 170, 184);
             footer.Text = "Developer preview · Local encrypted storage · Close keeps the visible tray app running; Quit stops capture."; Controls.Add(footer);
@@ -318,10 +325,13 @@ namespace PromteSaver.WindowsPreview {
 
         void BuildWorkspace() {
             workspace.Dock = DockStyle.Fill; workspace.Padding = new Padding(24, 12, 24, 8); workspace.Visible = false; Controls.Add(workspace);
-            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 7 };
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 55)); layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 45)); layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44)); layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
-            hint.Dock = DockStyle.Fill; hint.Text = "Choose a source. New prompts are saved automatically while the vault stays unlocked."; hint.ForeColor = accent; layout.Controls.Add(hint, 0, 0);
+            var layout = workspaceLayout; layout.Dock = DockStyle.Fill; layout.ColumnCount = 1; layout.RowCount = 7;
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 66)); layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 46)); layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 0));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 50)); layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+            var heading = new Panel { Dock = DockStyle.Fill };
+            var title = Label("Your saved prompts", 21, FontStyle.Bold); title.Dock = DockStyle.Top; title.Height = 36; heading.Controls.Add(title);
+            hint.Dock = DockStyle.Bottom; hint.Height = 28; hint.Text = "Choose a source to begin. Your saved text appears here."; hint.ForeColor = accent; heading.Controls.Add(hint);
+            layout.Controls.Add(heading, 0, 0);
             var sources = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
             nativeConsent.Text = "Remember new Codex prompts from local session logs (experimental)"; nativeConsent.Size = new Size(560, 38); nativeConsent.ForeColor = ForeColor; nativeConsent.AccessibleName = nativeConsent.Text; nativeConsent.Visible = false; nativeConsent.TabStop = false; sources.Controls.Add(nativeConsent);
             StyleButton(native, "Enable Codex", 145); native.Click += async delegate { await ToggleNative(); }; native.Visible = false; native.TabStop = false; sources.Controls.Add(native);
@@ -329,10 +339,22 @@ namespace PromteSaver.WindowsPreview {
             notepadConsent.ForeColor = ForeColor; notepadConsent.AccessibleName = "Approve saving any foreground Notepad editor text after keyboard activity for this unlocked session";
             sources.Controls.Add(notepadConsent);
             StyleButton(notepad, "Start Notepad", 150); notepad.Click += async delegate { await ToggleNotepad(); }; sources.Controls.Add(notepad);
+            StyleButton(pause, "Pause all", 120); pause.Click += async delegate { keyboardCapture.Stop(); localKeyboardGap = null; await Execute(async () => { await service.Request("/api/capture/pause", "POST", new { }, session.Token); await CaptureStatus(); }); }; sources.Controls.Add(pause);
+            StyleButton(settingsButton, "More options", 145); settingsButton.Click += delegate {
+                settingsPanel.Visible = !settingsPanel.Visible;
+                layout.RowStyles[2].Height = settingsPanel.Visible ? 146 : 0;
+                settingsButton.Text = settingsPanel.Visible ? "Hide options" : "More options";
+            }; sources.Controls.Add(settingsButton); layout.Controls.Add(sources, 0, 1);
+
+            settingsPanel.Dock = DockStyle.Fill; settingsPanel.BackColor = panelColor; settingsPanel.Visible = false;
+            var settingsLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Padding = new Padding(12, 6, 12, 6) };
+            settingsLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); settingsLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40)); settingsLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+            var extras = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
             browserSite.DropDownStyle = ComboBoxStyle.DropDownList; browserSite.Width = 125; browserSite.Height = 38;
             browserSite.AccessibleName = "Choose one AI site to connect";
-            browserSite.Items.AddRange(new object[] { "ChatGPT", "Claude", "Gemini" }); browserSite.SelectedIndex = 0; sources.Controls.Add(browserSite);
-            StyleButton(browser, "Connect browser", 155); browser.Click += async delegate { await PairBrowser(); }; sources.Controls.Add(browser); layout.Controls.Add(sources, 0, 1);
+            browserSite.Items.AddRange(new object[] { "ChatGPT", "Claude", "Gemini" }); browserSite.SelectedIndex = 0; extras.Controls.Add(browserSite);
+            StyleButton(browser, "Connect browser", 155); browser.Click += async delegate { await PairBrowser(); }; extras.Controls.Add(browser);
+            var review = Button("Review wording", 160); review.Click += async delegate { reviewMode = true; offset = 0; await LoadPage(); }; extras.Controls.Add(review);
             loginStartup.Text = "Start with Windows"; loginStartup.Size = new Size(190, 38); loginStartup.ForeColor = ForeColor;
             loginStartup.AccessibleName = "Start promteSaver with Windows; capture stays off until the vault is opened and a source is approved";
             try { loginStartup.Checked = !pilotTemporary && fixtureDirectory == null && WindowsLoginStartup.Enabled(Application.ExecutablePath); }
@@ -349,29 +371,40 @@ namespace PromteSaver.WindowsPreview {
                     changingLoginStartup = true; loginStartup.Checked = !loginStartup.Checked; changingLoginStartup = false;
                     footer.Text = "Windows startup setting could not be changed. Check your account or policy.";
                 }
-            }; sources.Controls.Add(loginStartup);
-            var tools = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
-            StyleButton(pause, "Pause all", 120); pause.Click += async delegate { keyboardCapture.Stop(); localKeyboardGap = null; await Execute(async () => { await service.Request("/api/capture/pause", "POST", new { }, session.Token); await CaptureStatus(); }); }; tools.Controls.Add(pause);
-            StyleButton(refresh, "Refresh prompts", 155); refresh.Click += async delegate { reviewMode = false; offset = 0; await LoadPage(); }; tools.Controls.Add(refresh);
-            var review = Button("Review recent wording", 195); review.Click += async delegate { reviewMode = true; offset = 0; await LoadPage(); }; tools.Controls.Add(review);
-            StyleText(search, false); search.Width = 220; search.AccessibleName = "Search saved prompts"; tools.Controls.Add(search);
-            var find = Button("Search", 90); find.Click += async delegate { reviewMode = false; offset = 0; await LoadPage(); }; tools.Controls.Add(find); layout.Controls.Add(tools, 0, 2);
+            }; extras.Controls.Add(loginStartup); settingsLayout.Controls.Add(extras, 0, 0);
             pairing.Dock = DockStyle.Fill; pairing.ReadOnly = true; StyleText(pairing, false); pairing.Visible = false; pairing.AccessibleName = "Single-use browser pairing code";
-            layout.Controls.Add(pairing, 0, 3);
+            settingsLayout.Controls.Add(pairing, 0, 1);
+            var optionNote = Label("Browser capture needs the optional helper. Wording review runs only when you choose it.", 9, FontStyle.Regular);
+            optionNote.Dock = DockStyle.Fill; optionNote.ForeColor = Color.FromArgb(150, 170, 184); settingsLayout.Controls.Add(optionNote, 0, 2);
+            settingsPanel.Controls.Add(settingsLayout); layout.Controls.Add(settingsPanel, 0, 2);
+
+            var tools = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, Padding = new Padding(0, 5, 0, 0) };
+            StyleText(search, false); search.Width = 310; search.Height = 38; search.AccessibleName = "Search saved prompts"; tools.Controls.Add(search);
+            search.KeyDown += async delegate(object sender, KeyEventArgs eventArgs) {
+                if (eventArgs.KeyCode == Keys.Enter) { eventArgs.SuppressKeyPress = true; reviewMode = false; offset = 0; await LoadPage(); }
+            };
+            var find = Button("Search", 90); find.Click += async delegate { reviewMode = false; offset = 0; await LoadPage(); }; tools.Controls.Add(find);
+            StyleButton(refresh, "Refresh", 110); refresh.Click += async delegate { reviewMode = false; offset = 0; await LoadPage(); }; tools.Controls.Add(refresh);
+            layout.Controls.Add(tools, 0, 3);
             var split = new SplitContainer { Width = 1000, Dock = DockStyle.Fill, SplitterDistance = 360, BackColor = panelColor, BorderStyle = BorderStyle.FixedSingle, Panel1MinSize = 220, Panel2MinSize = 300 };
-            timeline.Dock = DockStyle.Fill; timeline.BackColor = panelColor; timeline.ForeColor = ForeColor; timeline.BorderStyle = BorderStyle.None; timeline.ItemHeight = 50; timeline.DrawMode = DrawMode.OwnerDrawFixed;
+            timeline.Dock = DockStyle.Fill; timeline.BackColor = panelColor; timeline.ForeColor = ForeColor; timeline.BorderStyle = BorderStyle.None; timeline.ItemHeight = 58; timeline.DrawMode = DrawMode.OwnerDrawFixed;
             timeline.DrawItem += DrawPrompt; timeline.SelectedIndexChanged += delegate { SelectPrompt(); }; split.Panel1.Controls.Add(timeline);
-            var detail = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(18, 8, 10, 8), BackColor = panelColor, ColumnCount = 1, RowCount = 5 };
-            detail.RowStyles.Add(new RowStyle(SizeType.Absolute, 52)); detail.RowStyles.Add(new RowStyle(SizeType.Percent, 68)); detail.RowStyles.Add(new RowStyle(SizeType.Absolute, 30)); detail.RowStyles.Add(new RowStyle(SizeType.Percent, 32)); detail.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
-            detailMeta.Dock = DockStyle.Fill; detailMeta.Text = "Saved capture snapshot"; detail.Controls.Add(detailMeta); StyleText(raw, true); raw.Dock = DockStyle.Fill; raw.AccessibleName = "Saved capture snapshot, read only"; detail.Controls.Add(raw);
-            var suggestionsLabel = Label("Review suggestions · saved snapshots stay unchanged", 10, FontStyle.Bold); suggestionsLabel.Dock = DockStyle.Fill; detail.Controls.Add(suggestionsLabel);
-            StyleText(suggestions, true); suggestions.Dock = DockStyle.Fill; suggestions.AccessibleName = "Optional wording review suggestions"; detail.Controls.Add(suggestions);
-            var copy = Button("Copy saved text", 150); copy.Click += delegate { if (unlocked && raw.Text.Length > 0) { try { Clipboard.SetText(raw.Text); footer.Text = "Saved snapshot copied. Your encrypted captured evidence stays unchanged."; } catch { footer.Text = "Clipboard is busy. Try copying again."; } } }; detail.Controls.Add(copy);
+            var detail = detailLayout; detail.Dock = DockStyle.Fill; detail.Padding = new Padding(18, 8, 10, 8); detail.BackColor = panelColor; detail.ColumnCount = 1; detail.RowCount = 4;
+            detail.RowStyles.Add(new RowStyle(SizeType.Absolute, 52)); detail.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); detail.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); detail.RowStyles.Add(new RowStyle(SizeType.Absolute, 0));
+            detailMeta.Dock = DockStyle.Fill; detailMeta.Text = "Choose a saved prompt"; detail.Controls.Add(detailMeta, 0, 0);
+            StyleText(raw, true); raw.Dock = DockStyle.Fill; raw.AccessibleName = "Saved prompt text, read only"; detail.Controls.Add(raw, 0, 1);
+            var copy = Button("Copy text", 130); copy.Click += delegate { if (unlocked && raw.Text.Length > 0) { try { Clipboard.SetText(raw.Text); footer.Text = "Saved text copied. Your encrypted snapshot stays unchanged."; } catch { footer.Text = "Clipboard is busy. Try copying again."; } } }; detail.Controls.Add(copy, 0, 2);
+            reviewPanel.Dock = DockStyle.Fill; reviewPanel.Visible = false;
+            var reviewLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
+            reviewLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 28)); reviewLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            var suggestionsLabel = Label("Optional wording suggestions · saved text unchanged", 10, FontStyle.Bold); suggestionsLabel.Dock = DockStyle.Fill; reviewLayout.Controls.Add(suggestionsLabel, 0, 0);
+            StyleText(suggestions, true); suggestions.Dock = DockStyle.Fill; suggestions.AccessibleName = "Optional wording review suggestions"; reviewLayout.Controls.Add(suggestions, 0, 1);
+            reviewPanel.Controls.Add(reviewLayout); detail.Controls.Add(reviewPanel, 0, 3);
             split.Panel2.Controls.Add(detail); layout.Controls.Add(split, 0, 4);
             var paging = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, Padding = new Padding(0, 4, 0, 0) };
             StyleButton(previous, "Previous", 100); previous.Click += async delegate { offset = Math.Max(0, offset - 10); await LoadPage(); }; paging.Controls.Add(previous);
             StyleButton(next, "Next", 100); next.Click += async delegate { offset += 10; await LoadPage(); }; paging.Controls.Add(next); pageInfo.Size = new Size(580, 35); pageInfo.Padding = new Padding(8); paging.Controls.Add(pageInfo); layout.Controls.Add(paging, 0, 5);
-            var boundaries = Label("Approved Notepad editors save any text as drafts, not sent prompts. Browser capture needs the optional helper; other apps are not recorded.", 9, FontStyle.Regular); boundaries.Dock = DockStyle.Fill; boundaries.ForeColor = Color.FromArgb(150, 170, 184); layout.Controls.Add(boundaries, 0, 6);
+            var boundaries = Label("Notepad saves editor drafts, including non-prompts. Other apps are not recorded by this source.", 9, FontStyle.Regular); boundaries.Dock = DockStyle.Fill; boundaries.ForeColor = Color.FromArgb(150, 170, 184); layout.Controls.Add(boundaries, 0, 6);
             workspace.Controls.Add(layout);
         }
 
@@ -403,7 +436,9 @@ namespace PromteSaver.WindowsPreview {
             localKeyboardGap = null;
             deadlineTimer.Stop(); localLockAt = 0;
             unlocked = false; epoch++; session.Cancel(); session.Dispose(); session = new CancellationTokenSource();
-            raw.Clear(); suggestions.Clear(); pairing.Clear(); pairing.Visible = false; search.Clear(); timeline.Items.Clear();
+            raw.Clear(); suggestions.Clear(); pairing.Clear(); pairing.Visible = false; search.Clear(); timeline.Items.Clear(); detailMeta.Text = "Choose a saved prompt";
+            settingsPanel.Visible = false; workspaceLayout.RowStyles[2].Height = 0; settingsButton.Text = "More options";
+            reviewMode = false; reviewPanel.Visible = false; detailLayout.RowStyles[3].Height = 0;
             nativeEnabled = false; nativeConsent.Checked = false; native.Text = "Enable Codex";
             notepadConsent.Checked = false; notepad.Text = "Start Notepad"; workspace.Visible = false; gate.Visible = true; gate.BringToFront();
             gateTitle.Text = initialized ? "Welcome back." : "Your private prompt memory";
@@ -492,11 +527,11 @@ namespace PromteSaver.WindowsPreview {
             if (keyboardCode.Length > 0) description = "Notepad capture gap · " + keyboardCode;
             if (sourceGap) description = "Capture gap · " + code + " · check recent saves";
             state.Text = description; tray.Text = "promteSaver · " + (sourceGap || keyboardCode.Length > 0 ? "capture gap" : keyboardEnabled ? "Notepad capture on" : sourceState == "running" ? "Codex capture on" : browserPaired ? "browser pairing ready" : "capture off");
-            hint.Text = sourceGap ? "Some Codex events may not have been saved. Check recent captures; pausing and restarting cannot recover missed text." :
-                keyboardCode.Length > 0 ? "Some Notepad text may not have been saved. Check recent snapshots; pause and retry this source." :
-                sourceState == "running" ? "New Codex prompts are saved from approved local session logs. Refresh to see the latest." :
-                keyboardEnabled ? "Any changed text in an approved Notepad editor is saved after a short pause. Refresh prompts to review it." :
-                "Approve Notepad here or connect the browser companion. Other desktop sources remain unavailable.";
+            hint.Text = sourceGap ? "A source may have missed text. Check your latest saved prompt." :
+                keyboardCode.Length > 0 ? "Notepad may have missed text. Check your latest saved prompt." :
+                keyboardEnabled ? "Saving changed Notepad text while this vault is open." :
+                browserPaired ? "Browser connected. Check its helper for site permission." :
+                "Nothing is recording yet. Choose a source below.";
         }
 
         async Task SaveNotepadSnapshot(string text) {
@@ -507,8 +542,9 @@ namespace PromteSaver.WindowsPreview {
                     new { eventId = Guid.NewGuid().ToString(), text, recordedAt = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ", System.Globalization.CultureInfo.InvariantCulture) }, session.Token);
                 if (observedEpoch == epoch && unlocked && Json.Flag(response, "saved")) {
                     localKeyboardGap = null;
-                    footer.Text = "Notepad draft saved locally. Refresh prompts to review the snapshot.";
+                    footer.Text = "Notepad text saved locally.";
                     await CaptureStatus();
+                    if (!reviewMode && search.Text.Length == 0) { offset = 0; await LoadPage(); }
                 }
             } catch (OperationCanceledException) { }
             catch (ApiProblem error) {
@@ -571,11 +607,13 @@ namespace PromteSaver.WindowsPreview {
             await Execute(async () => {
                 var result = await service.Request(reviewMode ? "/api/capture/review?limit=10" : "/api/captured?limit=10&offset=" + offset + "&q=" + Uri.EscapeDataString(term), "GET", null, session.Token);
                 if (observedEpoch != epoch || !unlocked) return;
+                reviewPanel.Visible = reviewMode;
+                detailLayout.RowStyles[3].Height = reviewMode ? 150 : 0;
                 timeline.Items.Clear(); raw.Clear(); suggestions.Clear();
                 foreach (var item in Json.Items(result, "items")) timeline.Items.Add(new PromptRow { Value = Json.Object(item), Review = reviewMode });
                 int.TryParse(Json.Text(result, "total"), out total);
                 previous.Enabled = !reviewMode && offset > 0; next.Enabled = !reviewMode && offset + timeline.Items.Count < total;
-                pageInfo.Text = reviewMode ? "Recent prompts · offline spacing checks · original text preserved" : (total == 0 ? "No captured prompts yet. Enable a source, then type a Notepad draft or send a browser prompt." : (offset + 1) + "–" + (offset + timeline.Items.Count) + " of " + total + " captured prompts");
+                pageInfo.Text = reviewMode ? "Wording suggestions · original text unchanged" : (total == 0 ? "No saved prompts yet. Start a source above to try it." : (offset + 1) + "–" + (offset + timeline.Items.Count) + " of " + total + " saved prompts");
                 if (timeline.Items.Count > 0) timeline.SelectedIndex = 0;
             });
         }
@@ -603,7 +641,17 @@ namespace PromteSaver.WindowsPreview {
             bool selected = (e.State & DrawItemState.Selected) != 0;
             using (var brush = new SolidBrush(selected ? Color.FromArgb(41, 70, 59) : panelColor)) e.Graphics.FillRectangle(brush, e.Bounds);
             var row = timeline.Items[e.Index] as PromptRow;
-            TextRenderer.DrawText(e.Graphics, row == null ? "" : row.ToString(), Font, new Rectangle(e.Bounds.X + 12, e.Bounds.Y + 9, e.Bounds.Width - 22, e.Bounds.Height - 16), ForeColor, TextFormatFlags.EndEllipsis | TextFormatFlags.WordBreak);
+            if (row != null) {
+                var surface = Json.Object(Json.Get(row.Value, "surface"));
+                string source = row.Review ? Json.Text(row.Value, "source") : Json.Text(surface, "appId");
+                DateTime timestamp; string time = Json.Text(row.Value, "recordedAt");
+                if (DateTime.TryParse(time, null, System.Globalization.DateTimeStyles.RoundtripKind, out timestamp))
+                    time = timestamp.ToLocalTime().ToString("MMM d · h:mm tt");
+                var top = new Rectangle(e.Bounds.X + 12, e.Bounds.Y + 7, e.Bounds.Width - 22, 25);
+                var bottom = new Rectangle(e.Bounds.X + 12, e.Bounds.Y + 33, e.Bounds.Width - 22, 19);
+                TextRenderer.DrawText(e.Graphics, row.Excerpt(), Font, top, ForeColor, TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine);
+                TextRenderer.DrawText(e.Graphics, source + " · " + time, Font, bottom, Color.FromArgb(150, 180, 190), TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine);
+            }
             e.DrawFocusRectangle();
         }
 

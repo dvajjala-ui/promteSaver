@@ -23,7 +23,8 @@ namespace PromteSaver.WindowsPreview {
         readonly Timer settle = new Timer { Interval = 1300 };
         readonly Func<string, Task> onSnapshot;
         readonly Action<string> onGap;
-        IntPtr hook, pendingWindow;
+        IntPtr hook, pendingWindow, cachedWindow;
+        bool cachedNotepad;
         bool enabled, busy, retryAfterBusy;
 
         internal NotepadKeyboardCapture(Func<string, Task> onSnapshot, Action<string> onGap) {
@@ -59,14 +60,18 @@ namespace PromteSaver.WindowsPreview {
             enabled = true;
         }
         internal void Stop() {
-            enabled = false; retryAfterBusy = false; settle.Stop(); pendingWindow = IntPtr.Zero;
+            enabled = false; retryAfterBusy = false; settle.Stop(); pendingWindow = IntPtr.Zero; cachedWindow = IntPtr.Zero; cachedNotepad = false;
             var old = hook; hook = IntPtr.Zero;
             if (old != IntPtr.Zero) UnhookWindowsHookEx(old);
         }
         IntPtr KeyEvent(int code, IntPtr message, IntPtr data) {
             if (enabled && code >= 0 && (message.ToInt64() == KeyDown || message.ToInt64() == SystemKeyDown)) {
                 var window = GetForegroundWindow();
-                if (IsNotepad(window)) { pendingWindow = window; settle.Stop(); settle.Start(); }
+                // A foreground window normally receives many keys. Cache only
+                // its process-name gate; the full identity is checked again
+                // before any editor text is requested.
+                if (window != cachedWindow) { cachedWindow = window; cachedNotepad = IsNotepad(window); }
+                if (cachedNotepad) { pendingWindow = window; settle.Stop(); settle.Start(); }
                 else { pendingWindow = IntPtr.Zero; settle.Stop(); }
             }
             return CallNextHookEx(hook, code, message, data);
