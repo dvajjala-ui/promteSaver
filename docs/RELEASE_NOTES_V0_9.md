@@ -6,7 +6,7 @@ Date: 2026-10-23. Built from the uploaded v0.8 source. This release changes core
 
 **Tested locally on Windows:** An approved, focused, writable Edit/Document field can now be read through ValuePattern when TextPattern is absent or fails. A synthetic Windows UI Automation peer exposing only ValuePattern returned a harmless draft through that path. A separate WinForms TextBox probe exposed TextPattern, so it did not exercise the fallback. Producer-side password, sensitive-name, read-only, process and foreground checks remain required; changed text remains an unverified `draft_snapshot` if saved.
 
-**Source checks:** `npm run check` passed **190/190** Node tests plus release/contracts/types/browser syntax. The source-dependent native EXE compiled. The bundled setup hash below is from the immediately preceding tree and is not this latest source build.
+**Source checks:** `npm run check` passed **190/190** Node tests plus release/contracts/types/browser syntax. The complete native host compiled to an alternate EXE. A bundled rebuild verified 44 staged files but could not overwrite the running temporary pilot EXE, so the setup hash below is from the immediately preceding tree and is not this latest source build.
 
 **Untested on OS/browser:** No end-to-end vault save from a ValuePattern-only third-party editor, real voice dictation, long-duration use or browser site is established by this test. ValuePattern has no length-limited getter, and the native UI thread can still be delayed by a third-party accessibility provider. The temporary WinForms editor pilot is waiting for the user's manual per-app capture approval.
 
