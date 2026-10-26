@@ -71,3 +71,72 @@ test('Notepad keyboard snapshots require desktop approval and revoke on pause an
     rmSync(target, {recursive: true, force: true});
   }
 });
+
+test('desktop field snapshots require a named approved app and stay unverified', async () => {
+  const temporaryRoot = realpathSync(tmpdir());
+  const root = mkdtempSync(join(temporaryRoot, 'promtesaver-field-test-'));
+  const directory = join(root, 'vault');
+  const app = await startLocalWeb({directory, desktop: true});
+  const call = async (path: string, method = 'GET', payload?: unknown) => {
+    const response = await fetch(app.origin + path, {method,
+      headers: {Origin: app.origin, Authorization: `Bearer ${app.token}`,
+        ...(payload === undefined ? {} : {'Content-Type': 'application/json'})},
+      ...(payload === undefined ? {} : {body: JSON.stringify(payload)})});
+    return {status: response.status, body: await response.json()};
+  };
+  const snapshot = (source = 'sampleeditor.exe', text = 'Synthetic field text pasted into an editor.') =>
+    ({eventId: randomUUID(), source, text, recordedAt: new Date().toISOString()});
+  try {
+    assert.equal((await call('/api/setup', 'POST', {passphrase: 'Synthetic-Field-Passphrase-01',
+      confirm: 'Synthetic-Field-Passphrase-01'})).status, 201);
+    assert.deepEqual((await call('/api/capture/status')).body.field.sources, []);
+    assert.equal((await call('/api/capture/field/snapshot', 'POST', snapshot())).status, 409);
+    assert.equal((await call('/api/capture/field/consent', 'POST',
+      {enabled: true, source: 'chrome.exe', consent: true})).status, 400);
+    assert.equal((await call('/api/capture/field/consent', 'POST',
+      {enabled: true, source: 'bitwarden.exe', consent: true})).status, 400);
+    assert.equal((await call('/api/capture/field/consent', 'POST',
+      {enabled: true, source: 'msedgewebview2.exe', consent: true})).status, 400);
+    assert.equal((await call('/api/capture/field/consent', 'POST',
+      {enabled: true, source: 'credentialuibroker.exe', consent: true})).status, 400);
+    assert.equal((await call('/api/capture/field/consent', 'POST',
+      {enabled: true, source: 'SampleEditor.exe', consent: true})).status, 400);
+    assert.equal((await call('/api/capture/field/consent', 'POST',
+      {enabled: true, source: 'sampleeditor.exe'})).status, 400);
+    assert.equal((await call('/api/capture/field/consent', 'POST',
+      {enabled: true, source: 'sampleeditor.exe', consent: true})).status, 200);
+    assert.deepEqual((await call('/api/capture/status')).body.field.sources, ['sampleeditor.exe']);
+    assert.equal((await call('/api/capture/field/snapshot', 'POST', snapshot('othereditor.exe'))).status, 409);
+    assert.equal((await call('/api/capture/field/snapshot', 'POST', snapshot('chrome.exe'))).status, 400);
+    const first = snapshot();
+    assert.equal((await call('/api/capture/field/snapshot', 'POST', first)).status, 201);
+    assert.equal((await call('/api/capture/field/snapshot', 'POST', snapshot())).body.duplicate, true);
+    const page = await call('/api/captured?limit=10&offset=0');
+    assert.equal(page.body.total, 1);
+    assert.equal(page.body.items[0].surface.appId, 'sampleeditor.exe');
+    assert.equal(page.body.items[0].surface.classification, 'unknown');
+    assert.equal(page.body.items[0].quality, 'draft_snapshot');
+    assert.equal(page.body.items[0].sourceMethod, 'editor_snapshot');
+    assert.equal(readFileSync(join(directory, 'vault.sqlite')).includes(Buffer.from(first.text)), false);
+    assert.equal((await call('/api/capture/field/consent', 'POST',
+      {enabled: true, source: 'othereditor.exe', consent: true})).status, 200);
+    assert.equal((await call('/api/capture/field/consent', 'POST',
+      {enabled: false, source: 'sampleeditor.exe'})).status, 200);
+    assert.deepEqual((await call('/api/capture/status')).body.field.sources, ['othereditor.exe']);
+    assert.equal((await call('/api/capture/field/snapshot', 'POST', snapshot())).status, 409);
+    assert.equal((await call('/api/capture/pause', 'POST', {})).status, 200);
+    assert.deepEqual((await call('/api/capture/status')).body.field.sources, []);
+    assert.equal((await call('/api/capture/field/snapshot', 'POST', snapshot('othereditor.exe'))).status, 409);
+    assert.equal((await call('/api/capture/field/consent', 'POST',
+      {enabled: true, source: 'sampleeditor.exe', consent: true})).status, 200);
+    assert.equal((await call('/api/lock', 'POST', {})).status, 200);
+    assert.equal((await call('/api/capture/field/snapshot', 'POST', snapshot())).status, 423);
+    assert.equal((await call('/api/unlock', 'POST', {passphrase: 'Synthetic-Field-Passphrase-01'})).status, 200);
+    assert.deepEqual((await call('/api/capture/status')).body.field.sources, []);
+  } finally {
+    await app.close();
+    const target = resolve(root); const inside = relative(temporaryRoot, target);
+    assert.ok(inside && inside !== '..' && !inside.startsWith(`..${sep}`) && !inside.startsWith('../'));
+    rmSync(target, {recursive: true, force: true});
+  }
+});

@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import type { Observation, PromptRecord } from './generated.ts';
+import { allowedDesktopFieldSource } from './desktop-source.ts';
 
 /**
  * Tiny fail-closed JSON-schema subset for the currently checked-in capture contract.
@@ -78,5 +79,12 @@ export function assertObservation(value: unknown): asserts value is Observation 
 export function assertPromptRecord(value: unknown): asserts value is PromptRecord {
   if (!validate(value, document.$defs.PromptRecord!) || !validDate((value as PromptRecord).recordedAt)) throw new Error('Invalid prompt record');
   const record = value as PromptRecord;
-  if (record.surface.classification !== 'prompt' || record.surface.protection !== 'normal' || record.surface.privateMode) throw new Error('Ineligible prompt surface');
+  const ordinaryPrompt = record.surface.classification === 'prompt';
+  const approvedFieldDraft = record.surface.classification === 'unknown' &&
+    record.deviceId === 'windows-focused-field' && record.quality === 'draft_snapshot' &&
+    record.sourceMethod === 'editor_snapshot' && record.surface.editorId === 'focused-field' &&
+    record.surface.surfaceId === record.surface.appId &&
+    allowedDesktopFieldSource(record.surface.appId);
+  if ((!ordinaryPrompt && !approvedFieldDraft) || record.surface.protection !== 'normal' || record.surface.privateMode)
+    throw new Error('Ineligible prompt surface');
 }

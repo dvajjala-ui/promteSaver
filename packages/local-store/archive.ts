@@ -277,6 +277,16 @@ export class EncryptedArchive {
     return this.#saveLinkedCapture(record, 'Desktop inbox', ['desktop-capture', 'draft-snapshot'],
       'Observed in an approved Notepad editor after keyboard activity; submission is not verified.');
   }
+  /** Immutable snapshot from one approved native desktop field. */
+  saveFieldCapture(record: PromptRecord): {saved:boolean;redactions:number} {
+    if (record.deviceId !== 'windows-focused-field' || record.quality !== 'draft_snapshot' ||
+        record.sourceMethod !== 'editor_snapshot' || record.surface.appId !== record.surface.surfaceId ||
+        record.surface.editorId !== 'focused-field' || record.surface.classification !== 'unknown' ||
+        record.surface.protection !== 'normal' || record.surface.privateMode !== false)
+      throw new Error('Invalid desktop field capture');
+    return this.#saveLinkedCapture(record, 'Desktop inbox', ['desktop-capture', 'draft-snapshot'],
+      'Observed in an approved desktop text field; whether or where it was submitted is unverified.');
+  }
   #saveLinkedCapture(record: PromptRecord, project:string, tags:string[], note:string): {saved:boolean;redactions:number} {
     this.#ensureOpen();assertPromptRecord(record);
     return this.#transaction(()=>{

@@ -21,7 +21,7 @@ import { DEFAULT_GROQ_MODEL } from '../../packages/local-store/ai-settings.ts';
 import { AUTO_CAPTURE_HOSTS, browserCapture } from './browser-capture.ts';
 import { instructionQuote } from './refinement.ts';
 import { NativeCaptureSession } from './native-capture.ts';
-import { notepadSnapshot } from './keyboard-capture.ts';
+import { allowedFieldSource, fieldSnapshot, notepadSnapshot } from './keyboard-capture.ts';
 
 const webRoot = fileURLToPath(new URL('./public/', import.meta.url));
 const publicFiles: Record<string, [string, string]> = {
@@ -92,6 +92,15 @@ export async function startLocalWeb(options: LocalWebOptions) {
     keyboardApproved = false; keyboardGap = null; keyboardLastSavedAt = null; keyboardLastDigest = null;
     keyboardWrites.length = 0;
   };
+  const approvedFieldSources = new Set<string>();
+  const fieldLastDigests = new Map<string, string>();
+  const fieldWrites: number[] = [];
+  let fieldGap: string | null = null;
+  let fieldLastSavedAt: string | null = null;
+  const stopFields = () => {
+    approvedFieldSources.clear(); fieldLastDigests.clear(); fieldWrites.length = 0;
+    fieldGap = null; fieldLastSavedAt = null;
+  };
   let aiSettingsVersion = 0;
   let allowedCaptureHosts = new Set<string>();
   let offeredCaptureHosts = new Set<string>();
@@ -100,7 +109,7 @@ export async function startLocalWeb(options: LocalWebOptions) {
   let idleTimer: ReturnType<typeof setTimeout> | undefined;
   const idleMs = () => (options.idleMinutes ?? preferences.idleMinutes) * 60_000;
   const lockVault = () => {
-    nativeCapture.pause(); stopKeyboard();
+    nativeCapture.pause(); stopKeyboard(); stopFields();
     secureWork.cancel(); ai.cancel(); allowedCaptureHosts.clear(); offeredCaptureHosts.clear();
     clearTimeout(idleTimer); idleTimer = undefined;
     try { vault.lock(); } finally { writerToken = undefined; writerOrigin = undefined; writerExpiresAt = 0;
@@ -231,11 +240,13 @@ export async function startLocalWeb(options: LocalWebOptions) {
         const paired=unlocked&&!!writerToken&&Date.now()<writerExpiresAt;
         const authorized=paired&&allowedCaptureHosts.size>0;
         const native=nativeCapture.status();
-        return json(res,200,{state:!unlocked?'locked':native.state==='running'||authorized||keyboardApproved?'ready':paired?'paused':'unpaired',
+        return json(res,200,{state:!unlocked?'locked':native.state==='running'||authorized||keyboardApproved||approvedFieldSources.size>0?'ready':paired?'paused':'unpaired',
           browser:{paired,active:paired,authorized,hosts:paired?[...allowedCaptureHosts]:[],
             expiresAt:paired?new Date(writerExpiresAt).toISOString():null,pairingPending:!!pairSecret&&Date.now()<pairExpiresAt},
           native,keyboard:{available:options.desktop===true,enabled:unlocked&&keyboardApproved,source:'notepad.exe',
-            code:keyboardGap,lastSavedAt:keyboardLastSavedAt},dailyReview:{available:true,automaticCloud:false}});
+            code:keyboardGap,lastSavedAt:keyboardLastSavedAt},
+          field:{available:options.desktop===true,sources:unlocked?[...approvedFieldSources]:[],
+            code:fieldGap,lastSavedAt:fieldLastSavedAt},dailyReview:{available:true,automaticCloud:false}});
       }
       if (path === '/api/setup' && req.method === 'POST') {
         await runSecure('setup', async signal => {
@@ -290,8 +301,40 @@ export async function startLocalWeb(options: LocalWebOptions) {
         if(result.saved){keyboardWrites.push(now);keyboardLastDigest=digest;keyboardLastSavedAt=record.recordedAt;keyboardGap=null;}
         return json(res,result.saved?201:200,{saved:result.saved,quality:'draft_snapshot',redactions:result.redactions});
       }
+      if(path==='/api/capture/field/consent'&&req.method==='POST') {
+        const payload=await readBody(1000);
+        if(options.desktop!==true)throw new HttpProblem(409,'Use the Windows desktop app for this source');
+        if(Object.keys(payload).some(key=>!['enabled','source','consent'].includes(key))||
+          !allowedFieldSource(payload.source)||typeof payload.enabled!=='boolean'||
+          (payload.enabled&&payload.consent!==true))throw new HttpProblem(400,'Explicit approved desktop app required');
+        const source=payload.source;
+        if(payload.enabled) {
+          if(!approvedFieldSources.has(source)&&approvedFieldSources.size>=8)
+            throw new HttpProblem(409,'Too many desktop apps approved for this session');
+          approvedFieldSources.add(source);
+        } else {
+          approvedFieldSources.delete(source); fieldLastDigests.delete(source);
+          if (approvedFieldSources.size === 0) fieldGap = null;
+        }
+        return json(res,200,{sources:[...approvedFieldSources]});
+      }
+      if(path==='/api/capture/field/snapshot'&&req.method==='POST') {
+        const payload=await readBody(250_000);
+        if(options.desktop!==true)throw new HttpProblem(409,'Use the Windows desktop app for this source');
+        let record;
+        try {record=fieldSnapshot(payload);} catch {throw new HttpProblem(400,'Invalid desktop field snapshot');}
+        const source=record.surface.appId;
+        if(!approvedFieldSources.has(source))throw new HttpProblem(409,'Desktop app is not approved for this session');
+        const digest=createHash('sha256').update(record.text).digest('hex');
+        if(digest===fieldLastDigests.get(source))return json(res,200,{saved:false,duplicate:true,quality:'draft_snapshot'});
+        const now=Date.now();while(fieldWrites.length&&fieldWrites[0]!<now-60_000)fieldWrites.shift();
+        if(fieldWrites.length>=15){fieldGap='SOURCE_RATE_LIMIT';throw new HttpProblem(429,'Desktop field capture paused by rate limit; check recent saves');}
+        const result=archive.saveFieldCapture(record);
+        if(result.saved){fieldWrites.push(now);fieldLastDigests.set(source,digest);fieldLastSavedAt=record.recordedAt;fieldGap=null;}
+        return json(res,result.saved?201:200,{saved:result.saved,quality:'draft_snapshot',redactions:result.redactions});
+      }
       if(path==='/api/capture/pause'&&req.method==='POST') {
-        await readBody(1000);nativeCapture.pause();stopKeyboard();
+        await readBody(1000);nativeCapture.pause();stopKeyboard();stopFields();
         writerToken=undefined;writerOrigin=undefined;writerExpiresAt=0;pairSecret=undefined;pairExpiresAt=0;
         allowedCaptureHosts.clear();offeredCaptureHosts.clear();
         return json(res,200,{paused:true});
