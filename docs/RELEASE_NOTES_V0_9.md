@@ -2,6 +2,14 @@
 
 Date: 2026-10-23. Built from the uploaded v0.8 source. This release changes core functionality, not merely styling. It remains a developer pilot, not a universal recorder or signed desktop release.
 
+## 27 October writable ValuePattern fallback
+
+**Tested locally on Windows:** An approved, focused, writable Edit/Document field can now be read through ValuePattern when TextPattern is absent or fails. A synthetic Windows UI Automation peer exposing only ValuePattern returned a harmless draft through that path. A separate WinForms TextBox probe exposed TextPattern, so it did not exercise the fallback. Producer-side password, sensitive-name, read-only, process and foreground checks remain required; changed text remains an unverified `draft_snapshot` if saved.
+
+**Source checks:** `npm run check` passed **190/190** Node tests plus release/contracts/types/browser syntax. The source-dependent native EXE compiled. The bundled setup hash below is from the immediately preceding tree and is not this latest source build.
+
+**Untested on OS/browser:** No end-to-end vault save from a ValuePattern-only third-party editor, real voice dictation, long-duration use or browser site is established by this test. ValuePattern has no length-limited getter, and the native UI thread can still be delayed by a third-party accessibility provider. The temporary WinForms editor pilot is waiting for the user's manual per-app capture approval.
+
 ## 27 October focused-field reliability continuation
 
 **Tested locally on Windows:** The native preview now treats pre-existing focused text as an in-memory baseline and saves only a later change. A temporary-vault WPF pilot saved one edited draft after focus; a separately approved WPF read-only field containing a synthetic canary did not save. The earlier typed/paste/password/Pause all pilot remains valid. The producer now checks read-only metadata before reading field text, and expected protected-field exclusions do not raise a misleading capture gap. The new service source validator uses one shared denylist for browser, credential and system executable names.

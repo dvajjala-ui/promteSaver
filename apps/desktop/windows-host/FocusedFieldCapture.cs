@@ -70,7 +70,7 @@ namespace PromteSaver.WindowsPreview {
                         if (enabled && observedGeneration == generation && gap != null) Gap(gap);
                         return;
                     }
-                    Trace("read-bounded");
+                    Trace("read-limited");
                     if (ShouldSave(SameEditor(lastSavedElement, boundElement, lastSavedWindow, pendingWindow) ? lastSavedText : null, text)
                         && enabled && observedGeneration == generation) {
                         await onSnapshot(process, text);
@@ -238,8 +238,12 @@ namespace PromteSaver.WindowsPreview {
                 object valuePattern, textPattern;
                 bool hasValuePattern = focused.TryGetCurrentPattern(ValuePattern.Pattern, out valuePattern);
                 bool hasTextPattern = focused.TryGetCurrentPattern(TextPattern.Pattern, out textPattern);
-                if (!hasTextPattern) { reason = "text-pattern-unsupported"; return false; }
-                object readOnlyAttribute = ((TextPattern)textPattern).DocumentRange.GetAttributeValue(TextPattern.IsReadOnlyAttribute);
+                if (!hasTextPattern && !hasValuePattern) { reason = "text-pattern-unsupported"; return false; }
+                object readOnlyAttribute = null;
+                if (hasTextPattern) {
+                    try { readOnlyAttribute = ((TextPattern)textPattern).DocumentRange.GetAttributeValue(TextPattern.IsReadOnlyAttribute); }
+                    catch { if (!hasValuePattern) throw; }
+                }
                 bool textReadOnlyKnown = readOnlyAttribute is bool;
                 bool valueReadOnly = hasValuePattern && ((ValuePattern)valuePattern).Current.IsReadOnly;
                 if (!IsEditableValue(hasValuePattern, valueReadOnly, textReadOnlyKnown,
@@ -259,11 +263,10 @@ namespace PromteSaver.WindowsPreview {
             if (SameEditor(boundElement, focused, boundWindow, window)) return;
             Unbind();
             try {
-                object pattern;
-                if (!focused.TryGetCurrentPattern(TextPattern.Pattern, out pattern)) { Trace("focus-no-text-pattern"); Gap("FIELD_UNSUPPORTED"); return; }
+                string baseline;
+                if (!TryReadEditorText(focused, out baseline)) { Trace("focus-no-readable-pattern"); Gap("FIELD_UNSUPPORTED"); return; }
                 // Existing text predating approval/focus is a baseline, not a
                 // newly observed draft. Keep it only in memory for comparison.
-                string baseline = ((TextPattern)pattern).DocumentRange.GetText(MaxSnapshot + 1);
                 lastSavedText = baseline != null && baseline.Length <= MaxSnapshot ? baseline : null;
                 lastSavedElement = focused; lastSavedWindow = window;
                 boundElement = focused; boundWindow = window; boundProcess = process;
@@ -288,13 +291,26 @@ namespace PromteSaver.WindowsPreview {
                 return false;
             }
             try {
-                object pattern;
-                if (!focused.TryGetCurrentPattern(TextPattern.Pattern, out pattern)) { gap = "FIELD_UNSUPPORTED"; return false; }
-                text = ((TextPattern)pattern).DocumentRange.GetText(MaxSnapshot + 1);
+                if (!TryReadEditorText(focused, out text)) { gap = "FIELD_UNSUPPORTED"; return false; }
                 if (text != null && text.Length > MaxSnapshot) { text = null; gap = "SOURCE_LIMIT"; return false; }
                 if (!ShouldSave(null, text)) { text = null; return false; }
                 return true;
             } catch { text = null; gap = "SOURCE_UNAVAILABLE"; return false; }
+        }
+        internal static bool TryReadEditorText(AutomationElement focused, out string text) {
+            text = null;
+            object pattern;
+            if (focused.TryGetCurrentPattern(TextPattern.Pattern, out pattern)) {
+                try {
+                    text = ((TextPattern)pattern).DocumentRange.GetText(MaxSnapshot + 1);
+                    return true;
+                } catch { text = null; }
+            }
+            if (focused.TryGetCurrentPattern(ValuePattern.Pattern, out pattern)) {
+                text = ((ValuePattern)pattern).Current.Value;
+                return true;
+            }
+            return false;
         }
         public void Dispose() { Stop(); settle.Dispose(); }
     }
