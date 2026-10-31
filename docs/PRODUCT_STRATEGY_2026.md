@@ -1,5 +1,17 @@
 # Product strategy & competitive research — 22 October 2026
 
+> **Documentation scope (31 October 2026): Current reference with historical records.** Read the 31 October continuation first. Older plans, observations, branch state and test counts are dated snapshots. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
+## Current strategy — 31 October 2026
+
+Deliver the Windows capture → memory → review → reuse workflow in [CORE_OBJECTIVE.md](CORE_OBJECTIVE.md). The app should automatically remember permitted prompts after source approval; manual library maintenance is supporting infrastructure. The native customer journey comes first, with optional browser integration where needed. macOS and website sync remain later goals.
+
+The current Windows host is WinForms with a private Node service. Its focused-field route can save non-prompt drafts and has no submit signal; real third-party prompt workflows still need acceptance. Optional daily AI review, a native reuse picker and suggestions inside other apps remain open. Prioritize reliability, normal setup, trustworthy history and demonstrated recurring-task value before more dashboard work. [Next sprints](NEXT_SPRINTS.md) and [market gates](MARKET_READINESS_GATES.md) define the work and evidence.
+
+The success measures below remain proposed, not achieved. Existing research retains its 22 October consultation date; no competitor or market research was refreshed here. Earlier manual-first release assumptions and Tauri/SQLCipher proposals are historical, not the current implementation contract.
+
+## Preserved 22 October strategy and research
+
 ## Executive decision
 
 Build **a prompt memory and reuse workspace**, not a surveillance-style activity logger or yet another general-purpose chat interface. The first job is: *"I did useful thinking before; help me find, trust, adapt, and reuse it in seconds."* The durable differentiator is **source-aware recall across tools** combined with **explicit user-controlled templates** and **real privacy boundaries**.

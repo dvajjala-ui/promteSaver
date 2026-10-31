@@ -1,5 +1,7 @@
 # Writing DNA and contextual assistance — product feasibility (2026-10-22)
 
+> **Documentation scope (31 October 2026): Historical research.** References and findings retain their original consultation dates; this refresh did not verify them again. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
 ## Decision
 
 Do **not** clone Grammarly or record all of a person's writing. Focus the product on **private, consensual writing memory and reuse**. Build a reusable, portable style profile from samples the user explicitly selects. Allow editing, export, revocation, and separation by context (personal email, work, developer documentation). Keep it a discrete feature rather than making the vault dependent on AI services.

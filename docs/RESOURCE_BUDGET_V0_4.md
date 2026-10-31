@@ -1,5 +1,7 @@
 # Resource profile and hardware acceptance — v0.4
 
+> **Documentation scope (31 October 2026): Version-specific reference.** Apply the stated version and component scope. Current Windows setup, vault recovery and product priorities are described in the current guides. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
 ## Goal
 
 Smooth manual save/search/reuse on 4–8 GiB Windows PCs and base-memory macOS machines **with many other applications running**. This is an unverified acceptance target, not a supported-hardware claim. No background recording or local AI model is required. Low-memory settings should be useful without installing a second browser engine.

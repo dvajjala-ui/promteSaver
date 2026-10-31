@@ -1,5 +1,7 @@
 # Architecture decision: bounded responsive local work (v0.8)
 
+> **Documentation scope (31 October 2026): Historical plan or implementation snapshot.** The original body is preserved for context. Its proposed stack, milestones and then-current feature claims are superseded by current guidance. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
 Date: 2026-10-23. Status: implemented and verified in Node compatibility tests; native host still experimental.
 
 ## Problem

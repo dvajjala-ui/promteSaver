@@ -287,6 +287,14 @@ export class EncryptedArchive {
     return this.#saveLinkedCapture(record, 'Desktop inbox', ['desktop-capture', 'draft-snapshot'],
       'Observed in an approved desktop text field; whether or where it was submitted is unverified.');
   }
+  /** Session-authorized draft evidence; sequence admission belongs to the service. */
+  saveMonitoringCapture(record: PromptRecord): {saved:boolean;redactions:number} {
+    if (record.deviceId !== 'windows-monitoring-session') throw new Error('Invalid monitoring capture');
+    // #saveLinkedCapture applies the dedicated monitoring contract before writes,
+    // then atomically links encrypted evidence to an independent editable copy.
+    return this.#saveLinkedCapture(record, 'Desktop inbox', ['desktop-capture', 'monitoring-capture', 'draft-snapshot'],
+      'Observed as a local monitoring draft in an explicitly approved recording session. Input method, meaning and submission are unverified.');
+  }
   #saveLinkedCapture(record: PromptRecord, project:string, tags:string[], note:string): {saved:boolean;redactions:number} {
     this.#ensureOpen();assertPromptRecord(record);
     return this.#transaction(()=>{

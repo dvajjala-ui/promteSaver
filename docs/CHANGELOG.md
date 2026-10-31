@@ -1,5 +1,16 @@
 # Changelog
 
+> **Documentation scope (31 October 2026): Current reference with historical records.** Read the 31 October continuation first. Older plans, observations, branch state and test counts are dated snapshots. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
+## Documentation alignment — 31 October 2026
+
+- Added the current core objective and an index of every Markdown document.
+- Aligned Windows-first capture, local history, optional review and useful reuse across product direction, roadmap, backlog, UX, handoff and developer guidance.
+- Corrected stale native build, DPAPI, source identity, idle-session and installer claims. Labelled older planning/research/evidence without changing their recorded results.
+- No app version or runtime behavior change; application acceptance gaps remain in [READINESS_V0_9.md](READINESS_V0_9.md). Fresh documentation verification is recorded in [TEST_REPORT_V0_9.md](TEST_REPORT_V0_9.md).
+
+## Historical release entries
+
 ## v0.4.0 — Recovery and resource profiling beta
 
 - Debounced encrypted editor draft persistence and recover-as-new; explicit limits and no unfinished draft export.

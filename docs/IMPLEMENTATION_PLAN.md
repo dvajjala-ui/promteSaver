@@ -1,5 +1,7 @@
 # Implementation plan
 
+> **Documentation scope (31 October 2026): Historical plan or implementation snapshot.** The original body is preserved for context. Its proposed stack, milestones and then-current feature claims are superseded by current guidance. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
 Prepared: 19 October 2026. Status: M0 in progress. This document is the implementation plan; see [M0 progress](M0_PROGRESS.md) for the executable synthetic foundation and measured checks. Research, native runtime validation, and product validation are separate activities.
 
 ## 1. Product objective

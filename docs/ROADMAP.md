@@ -1,5 +1,19 @@
 # Future roadmap and product suggestions
 
+> **Documentation scope (31 October 2026): Current reference.** Use the current objective for priorities and the readiness/test records for acceptance; dated results retain their original scope. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
+## Current release order — 31 October 2026
+
+1. Windows capture reliability and source identity/privacy boundaries.
+2. Current-build setup/lifecycle, one useful real prompt source, recovery and resource/accessibility acceptance.
+3. Repeated user value from local history and explicit reuse.
+4. Optional daily review, durable source-derived blocks, native picker and useful contextual suggestions.
+5. More validated sources, then macOS; optional sync, web archive, mobile and local models later.
+
+This order supersedes the old connected-archive-first sequence below. No cloud account or model is required for local capture/search. The [core objective](CORE_OBJECTIVE.md), [next sprints](NEXT_SPRINTS.md) and [backlog](PRODUCT_BACKLOG.md) own current priorities. The remaining sections preserve useful earlier ideas as proposals, not delivered features or new commitments.
+
+## Historical ideas and proposed experiments
+
 Status: ideas to evaluate, 19 October 2026. This document does not expand the M0–M5 release plan. Prioritize using measured user benefit and capture/retrieval quality.
 
 ## Release sequence

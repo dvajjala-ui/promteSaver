@@ -1,5 +1,7 @@
 # v0.4 Verification: evidence and limitations
 
+> **Documentation scope (31 October 2026): Historical evidence.** Preserve the recorded environment and outcomes. These results do not certify the current build, another device or a real third-party source. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
 - Date: 22 October 2026; environment Linux, Node 22.16.0 compatibility, Chromium 144.0.7559.96, global TypeScript 5.8.3 with an ephemeral preinstalled local type-definition link.
 - `npm run test:compat`: **81/81 passed**. Includes 77 inherited tests, three encrypted draft/API/storage tests, one 90k-character preview rehydration HTTP test. Synthetic fixture only; some tests run a **real loopback Node server** but not a browser connected to it.
 - `tsc --noEmit`: passes using the available TypeScript 5.8.3, **not** the pinned 7.0.2 project toolchain; pinned Node 24 + exact dependencies must still be validated in CI.

@@ -1,5 +1,7 @@
 # Verification report — v0.6 Writing Studio private beta
 
+> **Documentation scope (31 October 2026): Historical evidence.** Preserve the recorded environment and outcomes. These results do not certify the current build, another device or a real third-party source. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
 Date: 2026-10-22. Context: Linux x64 container, Node 22.16.0 compatibility runner; Chromium 144.0.7559.96; globally available TypeScript 5.8.x. Production intended toolchain Node 24.16.x and pinned TypeScript 7.0.2 has **not** been validated in this environment.
 
 ## Executed checks

@@ -1,21 +1,22 @@
-# Dependency and distribution inventory - 0.3
+# Dependency and distribution inventory
 
-The local service and UI have **no third-party production npm dependencies**. They rely on the user's Node runtime, operating system and browser. The existing package-lock is retained, with root version updated, rather than inventing newly resolved integrity hashes.
+> **Documentation scope (31 October 2026): Current reference.** Use the current objective for priorities and the readiness/test records for acceptance; dated results retain their original scope. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
 
-| Component | Configuration / observed | Verification status |
+Updated: 31 October 2026; checked against the current manifests and build source. This refresh did not install packages, audit registries or resolve a new native dependency graph.
+
+The service has no third-party production npm dependencies. That does not mean the desktop product has no runtime, operating-system or license obligations.
+
+| Component | Current source / recorded use | Limit |
 | --- | --- | --- |
-| Node | Target 24.16+ within24.x; actual tests22.16.0 | Target install/matrix not run here; compatibility tested |
-| TypeScript | Pinned7.0.2; installed checker5.8.3 used | `npm ci` of exact pinned dev graph not repeated here |
-| @types/node | Pinned24.19.2 | Global compatibility typings used for offline check |
-| undici-types | Transitive existing lockfile entry | Existing dev lock retained; not re-audited |
-| Chromium | Observed144.0.7559.96 | Actual UI fixture scenarios only; not bundled |
-| Python Playwright | Optional QA dependency, outside npm/runtime | Used for Chromium harness; install separately |
-| Tauri | Manifest exactly2.11.5 | Official API reviewed, not compiled |
-| tauri-build | Manifest exactly2.6.3 | Official version reviewed, not compiled |
-| serde/serde_json | Native manifest1.x | Generate/review native lockfile and notices before release |
+| Node | Supported `>=24.16.0 <25`; current shell is 24.18.0; earlier preview bundled 24.16.0 | Package the trusted matching architecture and full distribution license; whole-app cost remains unmeasured |
+| TypeScript / Node types | Pinned dev dependencies 7.0.2 / 24.19.2 in package.json | Development tooling, not production npm dependencies; use the lockfile |
+| Windows UI | WinForms, .NET Framework 4.7.2+, Windows UI Automation, CurrentUser DPAPI | OS-supplied framework; actual clean-device compatibility and publisher signing remain open |
+| SQLite / crypto | Node built-ins; AES-GCM encrypted record payloads and bounded scrypt wrapping | Not whole-database/WAL encryption or an independent crypto audit |
+| Browser helper | MV3 source, optional per-site permission and write-only loopback bridge | Separately loaded developer extension; no browser-store or real-site acceptance |
+| Chromium / Python Playwright | Optional development QA tools; historical versions belong to their dated reports | Not bundled app dependencies; no fresh browser run is implied |
+| Tauri / tauri-build | Experimental manifest versions 2.11.5 / 2.6.3 and checked-in real Cargo.lock | Separate from the current WinForms host; last recorded Windows Cargo check failed on missing SDK kernel32.lib |
+| Groq | Explicit fixed-endpoint HTTP integration using built-in fetch, no provider SDK | Key remains local; each request requires preview/consent; no live-provider quality or availability result |
 
-Historical AJV dependencies mentioned in M0 notes are no longer runtime package dependencies in the supplied v0.2/0.3 package. No new `npm audit` or native advisory sweep is claimed. An empty production npm dependency map is not an application security guarantee.
+Generated runtime staging, EXEs, setup packages and local tooling live under ignored paths. A fresh checkout contains source/build scripts, not the earlier tested binaries or real vaults. Runtime manifests detect accidental changes relative to a matching manifest; they do not establish authenticity if both are replaced.
 
-The source ZIP contains no Node executable, native WebView, Rust build products or installed npm dependencies. Desktop preparation stages a trusted local Node executable and requires its distribution LICENSE. All native/transitive/runtime licenses and notices must be reviewed for an installer. The original promteSaver source license is still unselected; `private:true` prevents accidental npm publication but is not a license choice.
-
-No competitor code was copied in this increment. Production source performs no automatic dependency downloads, telemetry or external inference. Cargo/npm development installs require normal explicit network access and review.
+Before distribution, review the original-source license, complete runtime/framework/dependency notices, exact Cargo graph where used, security advisories, build identities, signing and update integrity. The original-source license remains unselected; `private: true` is not a license. No new advisory or license audit is claimed here.

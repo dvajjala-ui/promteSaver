@@ -1,46 +1,34 @@
 # UX principles and usability checklist
 
-**Experience goal:** "Quietly useful, always understandable, quick enough that I actually use it."
+> **Documentation scope (31 October 2026): Current reference.** Use the current objective for priorities and the readiness/test records for acceptance; dated results retain their original scope. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
 
-## Information architecture
+Updated: 31 October 2026. The [core objective](CORE_OBJECTIVE.md) is the default Windows experience: approve a supported source, remember permitted prompts, review history and reuse useful wording.
 
-- **Home / All prompts:** single search, most-recent/important prompts, first-run examples if explicitly requested.
-- **Pinned:** curated daily prompts rather than every noisy capture.
-- **Templates:** reusable text with `{{variables}}` filled at copy time. No dangerous hidden scripts or implicit agent actions.
-- **Captured:** provenance-labeled imported/observed source records. Separate immutable source evidence from editable library items.
-- **Settings & privacy:** status, local storage disclosures, recording boundaries and lock controls. No buried security opt-out.
+## Primary Windows experience
 
-## Interaction design in current preview
+- First run: create/open the Windows-protected vault, explain supported sources and exclusions, then request source approval. No account, mandatory cloud AI, terminal command or unpacked extension is the target customer journey.
+- Home: saved snapshots with app/site, time and honest draft quality; full selected text, search, Copy, source setup, visible state, Pause and Lock.
+- Explain that approved desktop fields may save non-prompts. Existing text is only a baseline; changed text can be saved after the debounce. No desktop send proof is implied.
+- Closing the window keeps the tray app running; Quit stops its owned service. Start with Windows is optional and launches locked. Approval does not silently return after lock/restart.
+- Keep privacy, deletion and recovery discoverable. Browser pairing, the older Notepad pilot, wording review and startup are secondary More options controls.
+- Distinguish implemented optional tools from planned daily AI review and cross-app suggestions. The vault's broader library/Writing Studio/AI UI supports the core loop rather than defining the main onboarding.
 
-1. Onboarding only needs vault passphrase + confirmation. Password strength is a risk, but no account/marketing funnel. Give a clear offline promise and plain-language encryption limitations.
-2. Empty state gives **Save a prompt** or **Add examples**. Examples are synthetic and opt-in.
-3. Search is prominent; `Ctrl/Cmd + K` opens Quick Find and `Ctrl/Cmd + N` opens prompt creation. Cap results to protect weak devices.
-4. Cards show source/type, recent date, tags and a small preview. Pin, copy and edit are discoverable. Destructive delete asks for confirmation.
-5. Template variables are resolved at user action, then copied to clipboard. They never trigger auto-submit. Clipboard history is outside the app's control.
-6. Client-side views are DOM/text-based with no heavy JS framework, animation loops, icon libraries or remote fonts. Responsive grid adapts to narrow browser windows.
-7. `.editor-dialog` has native dialog focus trapping, Escape to request dismissal (confirm if a draft is dirty), visible labels and focus rings. Reduced-motion preferences disable transitions.
+## Review and reuse
 
-## Accessibility and internationalization backlog
+Keep the saved snapshot separate from an editable library copy and any AI output. Show source, method, date, quality and gaps. A failed acknowledgement is unconfirmed, not proof that no save occurred. Unknown editors may produce no gap receipt at all.
 
-- Current: semantic buttons/inputs, labels, keyboard shortcuts, visible focus, live result/notification regions, `prefers-reduced-motion`, no auto-running effects.
-- Next: run **axe-core/WCAG 2.2 AA** audit, actual screen-reader testing with NVDA/VoiceOver, 200% zoom, meaningful focus restoration after dialog close, color contrast audit, non-US date/time formatting, right-to-left and CJK/multilingual query handling.
-- Text normalization for search uses Unicode NFKC/lowercasing; actual accented/CJK/mixed-language retrieval coverage needs consented fixtures.
-- Browser helper supports only a known AI-site allowlist and an explicitly focused editor. When detection fails, explain why without inspecting the whole page.
+Explicit related-prompt recall shows keyword matches and source/project context. Users choose exact copy or an editable draft copy; choosing a result never submits it. Worked/not-useful feedback is user judgment; only Hidden currently suppresses a revision. Do not label this learned preference inference.
 
-## Design tokens (current)
+Offline Review wording runs only when requested and checks limited spacing, repetition and punctuation rules. Cloud tools need an outgoing preview and fresh approval. Future daily review must preserve the source and voice; future insertion must verify the current editor, allow undo and never send automatically.
 
-Background `#0b1014`; surface `#111820`; border `#26313b`; text `#ebf1f0`; muted `#84939e`; mint accent `#b7f9ce`; purple secondary `#a8a3e6`. System font stack to avoid font downloads. Small, legible body and clear high-contrast primary actions. Never convey security/capture status through color alone.
+## Source/browser fallback
 
-## Usability study protocol (not yet executed)
+The broader browser UI retains manual library entry, pins, templates, projects, history, Trash, writing profiles and explicit AI tools. It uses a passphrase vault distinct from the Windows DPAPI vault. Browser shortcuts and responsive layouts are not proof of equivalent native shortcuts, macOS behavior or a mobile app.
 
-Recruit 4 developers and 4 everyday AI users spanning Windows/macOS and at least two lower-spec machines. Ask each to: (1) save an existing prompt, (2) find it with a tag/search phrase after distraction, (3) make a template, (4) copy with filled variables, (5) pause/lock and locate deletion, (6) explain what is and is not captured. Log task completion, time, misclicks, trust concerns and interview notes only with consent. Prioritize problems by severity and frequency; do not claim usability success before testing.
+Use semantic controls, visible labels/focus, clear errors and honest copy/save acknowledgements. Keep paginated views and bounded hydration; no remote fonts, required framework, animation loops or hidden model. Preserve the established browser palette and tokens in [DESIGN_SYSTEM_V0_7.md](DESIGN_SYSTEM_V0_7.md) unless visual changes are separately requested.
 
-## Reference standards
+## Acceptance still needed
 
-- [WCAG 2.2: keyboard/focus](https://www.w3.org/TR/WCAG22/) — operable interface and visible focus.
-- [MDN keyboard accessible](https://developer.mozilla.org/en-US/docs/Web/Accessibility/Guides/Understanding_WCAG/Keyboard) — focusable interactive controls.
-- [Raycast snippets](https://manual.raycast.com/snippets) and [Text Blaze forms](https://blaze.today/guides/forms/) — discovery/reuse patterns; independent implementation, no source copied.
+Run keyboard-only, NVDA, high DPI, 200% zoom, narrow-window, focus restoration and consent/recovery sessions on the native Windows build. Measure responsive Pause/Lock/Quit with a slow accessibility provider. Browser fixtures and a synthetic native screenshot do not prove screen-reader conformance or real-device usability. macOS/VoiceOver is a later platform gate.
 
-## v0.3 evidence and remaining UX work
-
-A real Chromium fixture run now exercises keyboard finder/Escape, conditional edit recovery, cancellable dirty-draft dialogs, low-memory/compact layouts, bounded pagination, bulk project moves, password errors, backup preview and lock clearing. Screenshots include 390px mobile and desktop layouts. The live HTTP UI, screen readers, 200% zoom and WCAG audit remain separate unverified gates; do not promote fixtures into a conformance claim. Native browser prompts were replaced with asynchronous HTML dialogs; clipboard fallback offers selectable text without claiming a copy occurred.
+In a consented recurring-workflow pilot, ask users to install/open, approve a source, capture harmless text, inspect provenance, recover an old instruction, copy/reuse it, pause/lock and explain what is excluded. Record completion time, edits, misses, false suggestions and trust concerns without background telemetry. The pilot and targets are proposed, not completed research.

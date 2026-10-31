@@ -1,5 +1,7 @@
 # Upgrade, rollback and recovery - v0.3
 
+> **Documentation scope (31 October 2026): Version-specific reference.** Apply the stated version and component scope. Current Windows setup, vault recovery and product priorities are described in the current guides. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
 ## Before first use with existing data
 
 Stop every previous promteSaver service with Ctrl+C. Copy the **complete** `~/.promtesaver-local` directory (Windows: the same folder beneath your user profile) to a secure backup location. Include `keyinfo.json`, `vault.sqlite` and any WAL/SHM files. Do not make a raw backup while SQLite is running; a folder copy is not a transactional online backup.

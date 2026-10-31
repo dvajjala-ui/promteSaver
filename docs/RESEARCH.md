@@ -1,5 +1,7 @@
 # Research and reuse decisions
 
+> **Documentation scope (31 October 2026): Historical research.** References and findings retain their original consultation dates; this refresh did not verify them again. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
 Researched: 19 October 2026. Public GitHub repository pages, selected licence files, official platform documentation, a research paper, engineering writing, and Reddit discussions were inspected. This was a documentation and repository review, not a runtime evaluation or full dependency audit. No external repository installer was executed.
 
 ## Recommendation

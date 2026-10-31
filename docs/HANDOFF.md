@@ -1,5 +1,27 @@
 # Developer handoff - v0.9
 
+> **Documentation scope (31 October 2026): Current reference.** Use the current objective for priorities and the readiness/test records for acceptance; dated results retain their original scope. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
+## Current continuation — 31 October 2026
+
+Start with [CORE_OBJECTIVE.md](CORE_OBJECTIVE.md), [PRODUCT_DIRECTION.md](PRODUCT_DIRECTION.md), [READINESS_V0_9.md](READINESS_V0_9.md) and [NEXT_SPRINTS.md](NEXT_SPRINTS.md). Windows capture → local memory → review → reuse is the priority. Secondary library/writing features support that loop; macOS and optional sync are later work.
+
+Source baseline: `cdc1259` on `main`. This documentation refresh is on `codex/docs-core-objective`; it changes Markdown only. It does not rebuild or publish the application, approve capture, configure a provider or alter a vault.
+
+**Source:** WinForms owns a private Node service and a DPAPI-protected Windows vault. The approved focused-field adapter saves changed writable UI Automation text as `draft_snapshot`, possibly including non-prompts. Approval is currently keyed by executable name, with foreground checks; it is not verified publisher/process identity. Pause/lock/Quit revoke it. Login startup starts locked. The optional browser helper remains separate; real Codex session collection stays disabled.
+
+**Evidence already recorded:** 190/190 tests on 27 October; native sources compiled to an alternate EXE; earlier real Notepad typing/pause and synthetic WPF typing/paste/baseline/password/read-only/pause pilots; a separate ValuePattern-only provider read test. The latter is not an end-to-end vault-save result. Earlier Chromium fixtures and temporary local-service scenarios do not establish human-granted helper capture on live AI sites or live Groq quality.
+
+**Artifact boundary:** The final bundled rebuild stopped at a running pilot EXE lock after staging. No new setup was produced for the latest ValuePattern source. The 44-file bundle/self-test and setup hash in the dated notes below refer to the preceding 189-test tree. The isolated setup install refers to an older build still. Ignored local artifacts are not distributed with Git, and their present existence or integrity was not revalidated by this documentation refresh.
+
+**Next:** Bound slow UIA calls away from the native UI thread and address ValuePattern allocation/name-only consent; rebuild the latest source; prove one useful real prompt editor and its stop/recovery cases; validate ordinary setup/uninstall/reinstall/login on a clean device; measure whole-app resources and repeated reuse. Preserve draft quality until a source supplies trustworthy submission evidence. The [test report](TEST_REPORT_V0_9.md) records fresh documentation checks separately from older application results.
+
+**31 October verification:** `npm run check` passed 190/190 with no skips/failures; demo and doctor passed. The 5,000-record synthetic benchmark measured distinct-query p95 311.58 ms, explicit recall p95 252.85 ms, identical-query p95 2.70 ms and sampled Node RSS 84.63 MiB. This is Node-only data on Windows/Node 24.18.0, not whole-app or low-memory acceptance. Markdown link/index/scope and historical-preservation checks passed after replacing absent ignored report links with explicit historical paths; no native bundle or real-site/provider pilot was run.
+
+## Historical handoff notes through 27 October 2026
+
+The notes below preserve what earlier work observed. Their branch alignment, machine state, pending manual approval, binaries, hashes and test counts are dated snapshots, not current live state. Use the continuation above for today's work order.
+
 Read README, AGENTS, RELEASE_NOTES_V0_9, READINESS_V0_9, ARCHITECTURE_V0_9, TEST_REPORT_V0_9 and PILOT_GUIDE_V0_9. The user's priority is **the recorder/AI/contextual-help core, not another cosmetic dashboard sprint**.
 
 **Latest continuation, 27 October:** The approved focused-field pilot was published to `codex/capture-reliability` as `c9cf5b45b67f3b57d4a9eecf07d1499438a72f35`; the writable ValuePattern-only fallback, synthetic real-UIA test and harmless WinForms editor fixture followed as `d0de70ce800b2169032a1f3a1bd222ebcf054250`. The local branch is aligned with GitHub. The fallback checks the same protected/read-only gates and still labels saves as unverified drafts. The ValuePattern getter itself cannot be length-limited before it returns, and synchronous third-party UIA calls can still stall the window; this is not general-app or all-day acceptance. A temporary-vault WinForms end-to-end pilot is awaiting the user's manual in-app **Start capture** approval because the computer-use skill forbids automation of capture/privacy consent. No WinForms save has been claimed yet.

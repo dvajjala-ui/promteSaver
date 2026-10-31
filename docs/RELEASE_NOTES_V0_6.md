@@ -1,5 +1,7 @@
 # promteSaver 0.6 — Integrated Writing Studio private beta
 
+> **Documentation scope (31 October 2026): Historical plan or implementation snapshot.** The original body is preserved for context. Its proposed stack, milestones and then-current feature claims are superseded by current guidance. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
 **Date:** 22 October 2026  
 **Status:** runnable local source beta, **not** a production installer or public release.
 

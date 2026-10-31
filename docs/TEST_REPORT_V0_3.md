@@ -1,5 +1,7 @@
 # v0.3 verification report - 22 October 2026
 
+> **Documentation scope (31 October 2026): Historical evidence.** Preserve the recorded environment and outcomes. These results do not certify the current build, another device or a real third-party source. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
 ## Provenance and scope
 
 Source base: uploaded `promteSaver-v0.2-enhanced-local-beta.zip`. The v0.2 baseline passed all 39 tests before editing. This report records actual commands/results, not a projected CI status. All records, passwords and prompts used for tests/benchmarks are synthetic. No user vault or private SSH key is packaged.

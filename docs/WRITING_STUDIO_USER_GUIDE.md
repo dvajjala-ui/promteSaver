@@ -1,12 +1,16 @@
 # Writing Studio — beta user guide
 
+> **Documentation scope (31 October 2026): Current reference.** Use the current objective for priorities and the readiness/test records for acceptance; dated results retain their original scope. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
+This optional tool supports the [capture and reuse objective](CORE_OBJECTIVE.md). Its local profile/instruction workflow is separate from the explicit cloud rewrite assistant and from the standalone unencrypted Writing DNA Lab prototype.
+
 ## Purpose
 
 Create a **writing preference profile** based on examples you choose, then generate instructions you can edit and paste into another AI tool to help it follow that style. This is **not** a claim that the profile perfectly replicates you, and it is not identity verification, AI training or comprehensive grammar checking.
 
 ## Quick start
 
-1. Run the normal local vault (`start-windows.ps1` or `start-mac.command`) on Node 24.16.x and unlock your vault.
+1. Run the source/browser fallback (`start-windows.cmd` on Windows, or `sh ./start-mac.command` on macOS) with supported Node 24.16+ within 24.x, then unlock its passphrase vault. Writing Studio is a secondary source/browser workflow; it is not the native Text from app capture screen.
 2. Open **Writing Studio** in the left navigation. Give the profile a context label: e.g., *Project changelogs*, *Friendly emails*, or *Direct technical support*.
 3. Paste your own sample text, using `---` on its own line to separate distinct examples. Do not paste secrets, credentials, coworkers' private messages, or writing you cannot use with permission.
 4. Click **Analyze selected writing**. Check sentence/list statistics, inferred style tendencies, and the samples shown in the expanded review. These are simple measures that can be wrong on very small or unusual text.
@@ -22,7 +26,7 @@ Paste text in **Local writing check**, click **Check writing**, review flagged i
 
 ## Privacy notes
 
-- No background recording, cloud model, API key, or periodic grammar checker runs in this release.
+- Writing Studio sample analysis and local proofreading run only on request. The wider app has separately approved native/browser capture and optional explicit Groq requests; this profile workflow does not start them. No background model or periodic grammar service is installed.
 - Your raw pasted text briefly exists in the unlocked UI and transient HTTP request. When locking the vault, Writing Studio input fields and results are cleared from the browser DOM; ordinary OS swap/clipboard protection is not guaranteed.
 - The sample analyzer attempts best-effort sensitive-token redaction before deriving the profile; do not rely on it for comprehensive confidential-data removal.
 - Deleting a profile deletes its current encrypted database record, **not** every previously exported file, old encrypted backup, OS snapshot, or copy pasted into an AI service.

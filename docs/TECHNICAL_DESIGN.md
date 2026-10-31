@@ -1,5 +1,7 @@
 # Technical design
 
+> **Documentation scope (31 October 2026): Historical plan or implementation snapshot.** The original body is preserved for context. Its proposed stack, milestones and then-current feature claims are superseded by current guidance. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
 Status: proposed, 19 October 2026. Choices below are implementation decisions to validate, not claims that a recorder or service already exists. External capability evidence is in [RESEARCH.md](RESEARCH.md).
 
 ## 1. Product flow

@@ -1,5 +1,17 @@
 # Conversation summary
 
+> **Documentation scope (31 October 2026): Current reference with historical records.** Read the 31 October continuation first. Older plans, observations, branch state and test counts are dated snapshots. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
+## Current continuation — 31 October 2026
+
+The user wants a normal Windows desktop app that remembers prompts from approved sources automatically, retains trustworthy local source history, supports optional separate improvements, and helps reuse useful instructions later. Windows is now first; macOS and optional sync follow. The owner's later correction is preserved verbatim in [PRODUCT_DIRECTION.md](PRODUCT_DIRECTION.md).
+
+Implementation has progressed beyond the original planning snapshot: WinForms app/private Node vault, Windows DPAPI, unsigned setup prototype, approved-app draft capture, optional browser helper, local recall and explicit reviewed AI tools exist. Source and narrow Windows tests are recorded; broad real prompt-source acceptance, latest-build setup, daily AI review and cross-app suggestions remain open. Start with [CORE_OBJECTIVE.md](CORE_OBJECTIVE.md), [READINESS_V0_9.md](READINESS_V0_9.md) and [NEXT_SPRINTS.md](NEXT_SPRINTS.md).
+
+## Preserved 19 October planning summary
+
+The remaining text summarizes the earlier conversation, not today's implementation or a current provider/stack decision. Later owner corrections and current evidence take precedence.
+
 Planning snapshot: 19 October 2026. This is a project-focused summary for continuing work in another chat; it is not a verbatim transcript.
 
 ## The user's problem

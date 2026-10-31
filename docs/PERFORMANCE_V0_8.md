@@ -1,5 +1,7 @@
 # v0.8 resource and responsiveness evidence
 
+> **Documentation scope (31 October 2026): Version-specific reference.** Apply the stated version and component scope. Current Windows setup, vault recovery and product priorities are described in the current guides. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
 Measured 2026-10-23 in this Linux x64 development container, Node v22.16.0. Synthetic data only. These are development observations, not service-level guarantees or native installer benchmarks.
 
 ## Password work: same cryptography, responsive event loop

@@ -1,5 +1,7 @@
 # promteSaver 0.4 architecture: local memory, bounded projection, safe recovery
 
+> **Documentation scope (31 October 2026): Historical plan or implementation snapshot.** The original body is preserved for context. Its proposed stack, milestones and then-current feature claims are superseded by current guidance. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
 The v0.3 architecture is retained: one local Node service, a loopback HTTP browser UI, a SQLite archive of individually authenticated AES-256-GCM encrypted record payloads, and an optional manually paired Chrome/Edge helper. The Tauri host is **source-only and uncompiled**. No cloud service, AI worker or system-wide collector has been activated.
 
 ```mermaid

@@ -1,6 +1,18 @@
 # Experimental native desktop host: build and acceptance (v0.9)
 
-**Status: source foundation only. No native build completed in this environment.** Node child lifecycle tests and synthetic staging checks do not establish that Rust, bundled resources, WebView behavior or installers work. Keep using the local browser launcher for the runnable beta.
+> **Documentation scope (31 October 2026): Current reference.** Use the current objective for priorities and the readiness/test records for acceptance; dated results retain their original scope. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
+## Current Windows build path — 31 October 2026
+
+The current compiled Windows UI is **WinForms**, not the Tauri host described below. Follow [WINDOWS_DESKTOP_PREVIEW.md](WINDOWS_DESKTOP_PREVIEW.md) for `apps/desktop/windows-host/build-preview.ps1` and `build-setup.ps1`, trusted Node 24.x, matching Node LICENSE, .NET Framework and staging requirements. Generated output remains ignored under `.local/`; a fresh checkout contains no setup EXE.
+
+The latest source added a ValuePattern fallback and compiled to an alternate EXE. Its bundled rebuild stopped at a running pilot EXE lock; no new setup was produced. Earlier bundle/self-test/install results belong to earlier trees. Bind a new install/uninstall/clean-device result to the exact newly built artifact; no rebuild was performed during this documentation update.
+
+## Separate experimental Tauri path
+
+The remainder applies only to the experimental Tauri host. A real resolver produced the checked-in Cargo.lock on 23 October; the recorded Windows Cargo check failed because kernel32.lib was unavailable. That old failure is not a fresh toolchain probe, and the WinForms success is not Tauri build evidence.
+
+**Tauri status: source foundation only.** No successful Tauri binary/installer is recorded. Its Node lifecycle/staging checks do not certify Rust, WebView or native packaging. Use the separate WinForms guide for the present Windows preview.
 
 ## Architecture
 
@@ -37,7 +49,7 @@ Hashes prove consistency relative to the manifest, **not authenticity if both ma
 
 ## First developer preview
 
-No Cargo.lock has been fabricated. The first native resolution requires an explicit flag:
+A real Cargo resolver produced the checked-in Cargo.lock. Ordinarily build with it locked; the flag below is only for a deliberately missing lockfile, not an instruction to discard the existing resolution:
 
 ```sh
 npm run desktop:build -- --resolve-lockfile --node-license "/path/to/exact-node-distribution/LICENSE"

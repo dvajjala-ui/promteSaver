@@ -1,5 +1,24 @@
 # Decision log
 
+> **Documentation scope (31 October 2026): Current reference with historical records.** Read the 31 October continuation first. Older plans, observations, branch state and test counts are dated snapshots. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
+## Current decisions — 31 October 2026
+
+| ID | Decision | Basis and boundary |
+| --- | --- | --- |
+| C01 | Windows first; macOS follows a proven workflow | Owner's native single-install correction; [core objective](CORE_OBJECTIVE.md) |
+| C02 | Capture → local memory → review → reuse is the main product | A manually maintained library alone does not satisfy the goal; no all-app/all-day claim |
+| C03 | Keep the current WinForms + private Node implementation | Compiled native source and narrow pilots exist; Tauri remains a separate experiment, not a required rewrite |
+| C04 | Preserve source, editable copies and AI outputs separately | Current desktop captures are draft_snapshot with no send signal and may include non-prompts |
+| C05 | Optional AI stays off until a reviewed explicit request | Groq integration exists; real-provider quality and daily processing remain open. No automatic learning or cloud-on-typing |
+| C06 | Validate current artifacts and real user benefit before sale | Earlier setup and synthetic results cannot certify a new build, general source coverage or time saved |
+
+Open choices include broader provider/model policy, source support, recovery, original-source licensing and later sync infrastructure. Groq is already the current explicit integration; it is no longer accurate to call every provider choice wholly unselected.
+
+## Historical planning and decisions
+
+The original dated tables below retain their IDs, proposals and context (including the duplicated historical D20 label). Their manual-first and proposed-stack priorities are superseded by C01–C06; do not interpret them as a migration mandate.
+
 Planning snapshot: 19 October 2026. “Accepted direction” comes from the conversation; “proposed” is an implementation recommendation that can change with evidence.
 
 | ID | Decision | Status | Reason / revisit trigger |

@@ -1,5 +1,7 @@
 # promteSaver v0.7 verification
 
+> **Documentation scope (31 October 2026): Historical evidence.** Preserve the recorded environment and outcomes. These results do not certify the current build, another device or a real third-party source. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
 - **Node unit and integration:** 96/96 passed on the available Linux Node 22.16 TypeScript stripping compatibility path (`node --experimental-strip-types --test tests/*.test.ts tests/*.test.mjs`).
 - **Actual Chromium interface with mocked API:** 17/17 scenarios passed (`python scripts/browser-smoke.py --mode fixture`). Includes inspector, list/card layout, focus mode, Writing Studio, responsiveness, encrypted drafts, and lock clearing.
 - **Static site:** product website source and screenshots included; this is not a deployed or production-verified public site.

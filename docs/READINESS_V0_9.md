@@ -1,8 +1,12 @@
 # Product truth and readiness - v0.9
 
+> **Documentation scope (31 October 2026): Current reference.** Use the current objective for priorities and the readiness/test records for acceptance; dated results retain their original scope. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
+Current objective and release order: [CORE_OBJECTIVE.md](CORE_OBJECTIVE.md). Windows comes first; the tables distinguish implementation from evidence. Fresh documentation checks are recorded at the top of [TEST_REPORT_V0_9.md](TEST_REPORT_V0_9.md); older application results below retain their dates.
+
 The original request is an installed, lightweight cross-application prompt recorder with source attribution, useful AI organization and contextual writing help. A polished manual library is not that complete product. No market-readiness percentage can be inferred from test count or the version number.
 
-## Current capture gate, 27 October 2026
+## Current capture gate — source through 27 October, reviewed 31 October 2026
 
 The Windows preview has an unlocked, explicitly approved **Text from app** source. One synthetic WPF editor passed live typed/paste, initial-text baseline, password/read-only exclusion and Pause all checks in temporary encrypted vaults. Each save is an unverified editor draft. A separate synthetic real-Windows UI Automation peer verified the new ValuePattern-only text fallback, without an end-to-end vault save. This proves narrow provider behavior on one Windows machine. Actual dictation, Electron/Word/terminal controls, fast send, long-running capture, reboot/startup, final setup install and whole-app memory remain open. A slow UI Automation provider may block the WinForms UI thread; ValuePattern can return a large value before the app rejects it. The latest full source check passed 190/190 tests. The bundled unsigned setup passed compilation and native synthetic self-test on the preceding tree, not installation of this latest source. The current branch should stay a developer pilot and should not be sold as an all-app recorder.
 
@@ -36,12 +40,12 @@ A separate read-only Windows accessibility survey now probes the active ChatGPT 
 
 ## Release decision
 
-The 25 October continuation adds the password-free Windows vault, one-site pairing and expanded native credential/capture self-test. `npm run check` passed 186 Node tests with no skips or failures plus release/contracts/type/browser syntax checks; the portable EXE recompiled and staged verification passed 42 files. Browser runs passed 53 synthetic composer fixtures, 30 mocked UI fixtures and 20 Chromium-to-temporary-local-service scenarios; the native EXE and extracted ZIP passed a synthetic temporary-vault lifecycle self-test. Earlier 184-test, 165-test, 27-fixture and 19-service counts elsewhere in this report are historical increments. These results do not close real-provider, real-site, human-permission, clean-device or consumer-security gates. [Complete backlog](PRODUCT_BACKLOG.md), [current work sequence](NEXT_SPRINTS.md), [observed evidence](TEST_REPORT_V0_9.md).
+The source check passed **190/190** again on 31 October, with demo, doctor and the synthetic reliability benchmark passing. The last application change was the 27 October ValuePattern fallback: it compiled to an alternate native EXE, while the bundled rebuild stopped at a running pilot EXE lock and produced no new setup. The preceding 189-test bundle/self-test and older isolated setup install remain separate evidence. Earlier browser results include 53 synthetic composer scenarios, 30 mocked UI fixtures and 20 temporary local-service scenarios, not installed-helper capture on real AI sites. This documentation refresh does not close provider, real-source, installation or consumer-security gates. [Complete backlog](PRODUCT_BACKLOG.md), [work sequence](NEXT_SPRINTS.md), [dated evidence](TEST_REPORT_V0_9.md).
 
 **Developer pilot only.** The manual vault and temporary native lifecycle are the most exercised parts. The browser capture source has synthetic coverage but no real-site proof; real Codex capture is disabled. This is not a market-ready release and must not be marketed as recording every prompt.
 
 ## Minimum next acceptance run (no percentage substitution)
 
-On a non-sensitive test account: launch the portable Windows preview; create/unlock vault; install companion; approve one site; submit one harmless prompt; see a local saved acknowledgement; refresh Captured and confirm host and `draft_snapshot` quality; use a locally configured Groq key for a previewed summary only if explicitly evaluating that feature; save a separate result; verify the original is unchanged. Then pause, lock, revoke, disconnect, restart and restore backups. Repeat on each claimed site/browser/OS. Keep real Codex capture disabled and do not use real employer secrets until the negative/privacy cases pass.
+For the Windows core: rebuild the current source, use a disposable non-sensitive account/vault, approve one useful real prompt editor, and test typing, paste, edits, initial-text baseline, protected/read-only/unknown fields, pause, lock, restart, gaps and restore. Verify source attribution and separate editable copies; retain draft_snapshot until a trustworthy submission signal exists. Run the current setup/lifecycle and resource checks separately. Browser helper consent/capture on real sites and a previewed live-provider request are distinct optional acceptance tracks; neither substitutes for the native core milestone.
 
 The [pilot guide](PILOT_GUIDE_V0_9.md) contains exact setup and expected outcomes. [TEST_REPORT_V0_9.md](TEST_REPORT_V0_9.md) records what was actually run here.

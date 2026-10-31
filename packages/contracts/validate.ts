@@ -72,6 +72,7 @@ function validDate(value: string): boolean {
   const time = new Date(value);
   return !Number.isNaN(time.getTime()) && time.toISOString() === value;
 }
+const OPAQUE_MONITORING_ID = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
 export function assertObservation(value: unknown): asserts value is Observation {
   if (!validate(value, document.$defs.Observation!) || !validDate((value as Observation).recordedAt)) throw new Error('Invalid observation');
   if ((value as Observation).kind === 'submit' && (value as Observation).text !== undefined && (value as Observation).complete === undefined) throw new Error('Invalid observation');
@@ -85,6 +86,20 @@ export function assertPromptRecord(value: unknown): asserts value is PromptRecor
     record.sourceMethod === 'editor_snapshot' && record.surface.editorId === 'focused-field' &&
     record.surface.surfaceId === record.surface.appId &&
     allowedDesktopFieldSource(record.surface.appId);
-  if ((!ordinaryPrompt && !approvedFieldDraft) || record.surface.protection !== 'normal' || record.surface.privateMode)
+  // A monitoring session/field pair is opaque identity, not proof of submission
+  // or a semantic prompt classification. The service owns monotonic sequence
+  // admission; validation also runs on independent records during backup import.
+  const monitoringDraft = record.surface.classification === 'unknown' &&
+    record.deviceId === 'windows-monitoring-session' && record.quality === 'draft_snapshot' &&
+    record.sourceMethod === 'editor_snapshot' && record.origin === 'unknown' &&
+    OPAQUE_MONITORING_ID.test(record.id) &&
+    OPAQUE_MONITORING_ID.test(record.surface.surfaceId) &&
+    OPAQUE_MONITORING_ID.test(record.surface.editorId) &&
+    allowedDesktopFieldSource(record.surface.appId) &&
+    record.text.length <= 50_000 && !!record.text.trim() &&
+    record.surface.title === undefined && record.sourceMessageId === undefined;
+  const eligible = record.deviceId === 'windows-monitoring-session'
+    ? monitoringDraft : ordinaryPrompt || approvedFieldDraft;
+  if (!eligible || record.surface.protection !== 'normal' || record.surface.privateMode)
     throw new Error('Ineligible prompt surface');
 }

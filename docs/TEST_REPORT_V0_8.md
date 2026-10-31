@@ -1,5 +1,7 @@
 # v0.8 verification report
 
+> **Documentation scope (31 October 2026): Historical evidence.** Preserve the recorded environment and outcomes. These results do not certify the current build, another device or a real third-party source. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
 Date: 2026-10-23. Source: v0.7 ZIP plus changes documented in `CHANGES_FROM_V0_7.md`. All data used by this run was synthetic or a temporary test vault.
 
 ## Executed results

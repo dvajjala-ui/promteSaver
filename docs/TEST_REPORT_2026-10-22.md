@@ -1,5 +1,7 @@
 # Verification and performance report — v0.2 local beta · 22 October 2026
 
+> **Documentation scope (31 October 2026): Historical evidence.** Preserve the recorded environment and outcomes. These results do not certify the current build, another device or a real third-party source. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
 ## Tested build and reproducibility
 
 Source: user-provided `promteSaver-main.zip` → earlier v0.1 source → v0.2 changes made in the working copy. No remote commits, user accounts, private keys or real prompt data were touched. Tests use synthetic strings only.

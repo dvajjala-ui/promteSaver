@@ -1,5 +1,7 @@
 # v0.2 architecture — explicit user action first
 
+> **Documentation scope (31 October 2026): Historical plan or implementation snapshot.** The original body is preserved for context. Its proposed stack, milestones and then-current feature claims are superseded by current guidance. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
 ## Decision summary
 
 We are keeping the local HTML/CSS/JS + Node + SQLite prototype to measure usability **before** migrating to a lower-overhead native shell. Production goal remains a signed **Tauri 2/Rust** desktop application using platform capture permission boundaries and OS-protected keys. v0.2 does not secretly bolt a keylogger onto the web vault. The immediate differentiator is trustworthy capture/reuse with provenance and a reversible, offline workflow.

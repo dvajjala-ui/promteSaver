@@ -1,6 +1,14 @@
 # Architecture - Windows preview, consent-scoped capture and explicit AI
 
-Original design date: 2026-10-23. Current Windows preview updated 2026-10-26. The local Node service still owns the vault. A compiled WinForms window starts that service as a private child for an unsigned Windows developer preview; native Tauri remains experimental, uncompiled source. The native vault uses a random secret protected by Windows CurrentUser DPAPI, and its directory is separate from the older passphrase vault. The preview's browser helper is separate and still requires per-site opt-in; the native pairing action grants only the selected supported host. Real Codex transcript collection is disabled in the public preview pending a verified private/protected-session boundary.
+> **Documentation scope (31 October 2026): Current reference.** Use the current objective for priorities and the readiness/test records for acceptance; dated results retain their original scope. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
+## Product and component map
+
+The architecture serves [capture → local memory → review → reuse](CORE_OBJECTIVE.md). Current path: approved foreground Windows field → native producer → authenticated private service → encrypted immutable snapshot plus editable copy → native history/search/copy. Optional browser producers enter through the write-only bridge. Explicit vault-editor recall and separately previewed Groq requests support reuse; there is no daily AI worker, global suggestion overlay, account service or sync backend.
+
+Source approval is keyed by executable name with foreground checks, not publisher identity. Passive browser saves do not renew idle time; authenticated native requests can. Status/diagnostic reads do not renew it. Lock revokes consent and invalidates pending work. A slow synchronous UIA provider and the unbounded ValuePattern getter remain unresolved responsiveness/resource risks.
+
+Original design date: 2026-10-23. Source reviewed through the 27 October ValuePattern change; documentation aligned 31 October 2026. The current Windows UI is WinForms with a private Node sidecar and a separate DPAPI-protected vault. The older passphrase source/browser vault is not migrated. Tauri remains experimental. Browser capture is optional and separately approved; real Codex session capture remains disabled pending private/protected exclusions. Latest-source compilation and an older bundled setup are separate evidence; no new final setup was produced after the recorded EXE file lock.
 
 ## Windows approved-app focused-field source — 26 October 2026
 

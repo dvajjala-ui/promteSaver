@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { randomBytes, timingSafeEqual, createHash } from 'node:crypto';
+import { randomBytes, randomUUID, timingSafeEqual, createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { resolve, join } from 'node:path';
@@ -83,6 +83,32 @@ export async function startLocalWeb(options: LocalWebOptions) {
   const ai = new GroqRunner(options.aiTransport,options.aiTimeoutMs);
   const nativeCapture = new NativeCaptureSession(vault,{...(options.desktop===undefined?{}:{desktop:options.desktop}),
     ...(options.nativeSourceDirectory===undefined?{}:{directory:options.nativeSourceDirectory})});
+  // Independent of the unlocked-vault epoch: Stop -> Record must also reject
+  // old request bodies and late native callbacks in the same unlocked vault.
+  let captureEpoch = 0;
+  let monitoringApproved = false;
+  let monitoringSessionId: string | null = null;
+  let monitoringSequence = 0;
+  let monitoringGap: string | null = null;
+  let monitoringLastSavedAt: string | null = null;
+  const monitoringLimitSaves = 200, monitoringLimitBytes = 2 * 1024 * 1024;
+  let monitoringSavedCount = 0, monitoringInputBytes = 0;
+  const monitoringDigests = new Map<string, {source: string; digest: string}>();
+  // Keep admission history across Record/Stop/revoke/lock to prevent resetting
+  // the per-process, global monitoring limit by toggling the recording session.
+  const monitoringWrites: number[] = [];
+  const pruneMonitoringWrites = () => {
+    const cutoff = Date.now() - 60_000;
+    while (monitoringWrites.length && monitoringWrites[0]! <= cutoff) monitoringWrites.shift();
+  };
+  const monitoringStatus = () => ({available: options.desktop === true,
+    approved: vault.status().unlocked && monitoringApproved,
+    recording: vault.status().unlocked && monitoringSessionId !== null,
+    sessionId: vault.status().unlocked ? monitoringSessionId : null,
+    code: monitoringGap, lastSavedAt: monitoringLastSavedAt,
+    capacity: {remainingSaves: monitoringLimitSaves - monitoringSavedCount,
+      remainingBytes: monitoringLimitBytes - monitoringInputBytes,
+      limitSaves: monitoringLimitSaves, limitBytes: monitoringLimitBytes}});
   let keyboardApproved = false;
   let keyboardGap: string | null = null;
   let keyboardLastSavedAt: string | null = null;
@@ -108,8 +134,17 @@ export async function startLocalWeb(options: LocalWebOptions) {
   let lastActivity = Date.now();
   let idleTimer: ReturnType<typeof setTimeout> | undefined;
   const idleMs = () => (options.idleMinutes ?? preferences.idleMinutes) * 60_000;
-  const lockVault = () => {
+  const stopCapture = (revoke = false) => {
+    ++captureEpoch;
+    monitoringSessionId = null; monitoringSequence = 0; monitoringDigests.clear();
+    if (revoke) { monitoringApproved = false; monitoringLastSavedAt = null; }
     nativeCapture.pause(); stopKeyboard(); stopFields();
+    writerToken = undefined; writerOrigin = undefined; writerExpiresAt = 0;
+    pairSecret = undefined; pairExpiresAt = 0;
+    allowedCaptureHosts.clear(); offeredCaptureHosts.clear();
+  };
+  const lockVault = () => {
+    stopCapture(true);
     secureWork.cancel(); ai.cancel(); allowedCaptureHosts.clear(); offeredCaptureHosts.clear();
     clearTimeout(idleTimer); idleTimer = undefined;
     try { vault.lock(); } finally { writerToken = undefined; writerOrigin = undefined; writerExpiresAt = 0;
@@ -144,15 +179,23 @@ export async function startLocalWeb(options: LocalWebOptions) {
       const url = new URL(req.url, origin);
       if (url.origin !== origin) throw new HttpProblem(403, 'Invalid target origin');
       let requestEpoch = vault.sessionVersion;
+      const requestCaptureEpoch = captureEpoch;
+      const captureMutation = req.method !== 'GET' &&
+        (url.pathname.startsWith('/api/capture/') || url.pathname.startsWith('/api/bridge/'));
       const assertSession = () => {
         if (requestEpoch !== vault.sessionVersion || res.destroyed) {
           if (url.pathname.startsWith('/api/bridge/')) throw new HttpProblem(401, 'Browser helper session expired');
           throw new OperationCancelledError();
         }
       };
+      const assertCaptureSession = () => {
+        assertSession();
+        if (captureMutation && requestCaptureEpoch !== captureEpoch)
+          throw new HttpProblem(409, 'Capture state changed; retry the current action');
+      };
       const readBody = async (maxBytes = 512_000) => {
         const payload = await readJson(req, maxBytes);
-        assertSession(); return payload;
+        assertCaptureSession(); return payload;
       };
       const runSecure = <T>(kind: SecureOperation, task: (signal: AbortSignal) => Promise<T>) =>
         secureWork.run(kind, async signal => {
@@ -240,10 +283,10 @@ export async function startLocalWeb(options: LocalWebOptions) {
         const paired=unlocked&&!!writerToken&&Date.now()<writerExpiresAt;
         const authorized=paired&&allowedCaptureHosts.size>0;
         const native=nativeCapture.status();
-        return json(res,200,{state:!unlocked?'locked':native.state==='running'||authorized||keyboardApproved||approvedFieldSources.size>0?'ready':paired?'paused':'unpaired',
+        return json(res,200,{state:!unlocked?'locked':monitoringSessionId!==null||native.state==='running'||authorized||keyboardApproved||approvedFieldSources.size>0?'ready':paired?'paused':'unpaired',
           browser:{paired,active:paired,authorized,hosts:paired?[...allowedCaptureHosts]:[],
             expiresAt:paired?new Date(writerExpiresAt).toISOString():null,pairingPending:!!pairSecret&&Date.now()<pairExpiresAt},
-          native,keyboard:{available:options.desktop===true,enabled:unlocked&&keyboardApproved,source:'notepad.exe',
+          native,monitoring:monitoringStatus(),keyboard:{available:options.desktop===true,enabled:unlocked&&keyboardApproved,source:'notepad.exe',
             code:keyboardGap,lastSavedAt:keyboardLastSavedAt},
           field:{available:options.desktop===true,sources:unlocked?[...approvedFieldSources]:[],
             code:fieldGap,lastSavedAt:fieldLastSavedAt},dailyReview:{available:true,automaticCloud:false}});
@@ -266,14 +309,138 @@ export async function startLocalWeb(options: LocalWebOptions) {
       if (path === '/api/lock' && req.method === 'POST') { lockVault(); deadlineHeaders(); return json(res, 200, { ok: true }); }
       if (!vault.status().unlocked) throw new HttpProblem(423, 'Vault is locked');
       const archive = vault.archive;
+      if ((path === '/api/capture/keystroke-chunk' || path.startsWith('/api/capture/monitoring/')) && req.method === 'POST') {
+        if (options.desktop !== true) throw new HttpProblem(409, 'Use the Windows desktop app for monitoring');
+        if (path === '/api/capture/monitoring/snapshot') {
+          const payload = await readBody(250_000);
+          const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
+          if (Object.keys(payload).some(key => !['sessionId','fieldId','eventId','source','text','recordedAt'].includes(key)) ||
+              typeof payload.sessionId !== 'string' || !uuid.test(payload.sessionId) ||
+              typeof payload.fieldId !== 'string' || !uuid.test(payload.fieldId))
+            throw new HttpProblem(400, 'Invalid monitoring snapshot identity');
+          if (!monitoringApproved || !monitoringSessionId || payload.sessionId !== monitoringSessionId)
+            throw new HttpProblem(409, 'Monitoring is stopped or this recording session expired');
+          let record;
+          try { record = fieldSnapshot({eventId:payload.eventId,source:payload.source,text:payload.text,recordedAt:payload.recordedAt}); }
+          catch { throw new HttpProblem(400, 'Invalid monitoring field snapshot'); }
+          const source = record.surface.appId;
+          const previous = monitoringDigests.get(payload.fieldId);
+          if (previous && previous.source !== source) throw new HttpProblem(400, 'Monitoring field source changed');
+          const digest = createHash('sha256').update(record.text).digest('hex');
+          if (previous?.digest === digest) {
+            monitoringDigests.delete(payload.fieldId); monitoringDigests.set(payload.fieldId, previous);
+            return json(res, 200, {saved:false,duplicate:true,quality:'draft_snapshot'});
+          }
+          const inputBytes = Buffer.byteLength(record.text, 'utf8');
+          if (monitoringSavedCount >= monitoringLimitSaves || monitoringInputBytes + inputBytes > monitoringLimitBytes) {
+            stopCapture(); monitoringGap = 'MONITORING_CAPACITY';
+            throw new HttpProblem(409, 'Monitoring increment capacity reached; recording is stopped');
+          }
+          pruneMonitoringWrites();
+          if (monitoringWrites.length >= 15) {
+            stopCapture(); monitoringGap = 'SOURCE_RATE_LIMIT';
+            throw new HttpProblem(429, 'Monitoring stopped at the capture limit; check recent saves');
+          }
+          record = {...record,deviceId:'windows-monitoring-session',sourceSequence:monitoringSequence + 1,
+            surface:{...record.surface,surfaceId:monitoringSessionId,editorId:payload.fieldId}};
+          // Authorization, admission and encrypted persistence share one event-loop turn.
+          const result = archive.saveMonitoringCapture(record);
+          if (result.saved) {
+            ++monitoringSequence; monitoringWrites.push(Date.now());
+            ++monitoringSavedCount; monitoringInputBytes += inputBytes;
+            monitoringDigests.delete(payload.fieldId);
+            monitoringDigests.set(payload.fieldId, {source,digest});
+            if (monitoringDigests.size > 128) monitoringDigests.delete(monitoringDigests.keys().next().value!);
+            monitoringLastSavedAt = record.recordedAt; monitoringGap = null;
+            if (monitoringSavedCount === monitoringLimitSaves || monitoringInputBytes === monitoringLimitBytes) {
+              stopCapture(); monitoringGap = 'MONITORING_CAPACITY';
+            }
+          }
+          return json(res, result.saved ? 201 : 200, {...result,quality:'draft_snapshot',monitoring:monitoringStatus()});
+        }
+        // Keystroke reconstruction chunks from GlobalKeyboardCapture (WH_KEYBOARD_LL engine)
+        if (path === '/api/capture/keystroke-chunk') {
+          const payload = await readBody(250_000);
+          const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
+          const allowedExe = /^[a-z0-9][a-z0-9._-]{0,63}\.exe$/i;
+          if (Object.keys(payload).some(key => !['sessionId','eventId','source','text','recordedAt','isEnterFlush'].includes(key)) ||
+              typeof payload.sessionId !== 'string' || !uuid.test(payload.sessionId) ||
+              typeof payload.eventId !== 'string' || !uuid.test(payload.eventId) ||
+              typeof payload.source !== 'string' || !allowedExe.test(payload.source) ||
+              !allowedFieldSource((payload.source as string).toLowerCase()) ||
+              typeof payload.text !== 'string' || !payload.text.trim() || payload.text.length > 50_000 ||
+              typeof payload.recordedAt !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(payload.recordedAt) ||
+              !Number.isFinite(Date.parse(payload.recordedAt as string)) ||
+              Math.abs(Date.now() - Date.parse(payload.recordedAt as string)) > 300_000)
+            throw new HttpProblem(400, 'Invalid keystroke chunk');
+          if (!monitoringApproved || !monitoringSessionId || payload.sessionId !== monitoringSessionId)
+            throw new HttpProblem(409, 'Monitoring is stopped or this recording session expired');
+          const source = (payload.source as string).toLowerCase();
+          const inputBytes = Buffer.byteLength(payload.text as string, 'utf8');
+          if (monitoringSavedCount >= monitoringLimitSaves || monitoringInputBytes + inputBytes > monitoringLimitBytes) {
+            stopCapture(); monitoringGap = 'MONITORING_CAPACITY';
+            throw new HttpProblem(409, 'Monitoring increment capacity reached; recording is stopped');
+          }
+          pruneMonitoringWrites();
+          if (monitoringWrites.length >= 15) {
+            stopCapture(); monitoringGap = 'SOURCE_RATE_LIMIT';
+            throw new HttpProblem(429, 'Monitoring stopped at the capture limit; check recent saves');
+          }
+          const record = {schemaVersion: 1 as const, id: payload.eventId as string,
+            deviceId: 'windows-monitoring-session' as const, sourceSequence: monitoringSequence + 1,
+            recordedAt: payload.recordedAt as string,
+            surface: {surfaceId: monitoringSessionId, appId: source,
+              editorId: randomUUID(), classification: 'unknown' as const,
+              protection: 'normal' as const, privateMode: false},
+            text: payload.text as string, quality: 'draft_snapshot' as const,
+            sourceMethod: 'editor_snapshot' as const, origin: 'unknown' as const, redactions: 0};
+          const result = archive.saveMonitoringCapture(record);
+          if (result.saved) {
+            ++monitoringSequence; monitoringWrites.push(Date.now());
+            ++monitoringSavedCount; monitoringInputBytes += inputBytes;
+            monitoringLastSavedAt = record.recordedAt; monitoringGap = null;
+            if (monitoringSavedCount === monitoringLimitSaves || monitoringInputBytes === monitoringLimitBytes) {
+              stopCapture(); monitoringGap = 'MONITORING_CAPACITY';
+            }
+          }
+          return json(res, result.saved ? 201 : 200, {...result, quality: 'draft_snapshot', monitoring: monitoringStatus()});
+        }
+
+        if (!['/api/capture/monitoring/consent','/api/capture/monitoring/start',
+          '/api/capture/monitoring/stop','/api/capture/monitoring/revoke'].includes(path))
+          throw new HttpProblem(404, 'Not found');
+        const payload = await readBody(1_000);
+        if (path === '/api/capture/monitoring/consent') {
+          if (Object.keys(payload).length !== 1 || payload.consent !== true)
+            throw new HttpProblem(400, 'Explicit monitoring agreement required');
+          stopCapture(); monitoringApproved = true;
+        } else {
+          if (Object.keys(payload).length) throw new HttpProblem(400, 'Expected an empty monitoring request');
+          if (path === '/api/capture/monitoring/start') {
+            if (!monitoringApproved) throw new HttpProblem(409, 'Approve monitoring before Record');
+            if (monitoringSavedCount >= monitoringLimitSaves || monitoringInputBytes >= monitoringLimitBytes ||
+                monitoringGap === 'MONITORING_CAPACITY') {
+              stopCapture(); monitoringGap = 'MONITORING_CAPACITY';
+              throw new HttpProblem(409, 'Monitoring increment capacity reached; recording is stopped');
+            }
+            pruneMonitoringWrites();
+            if (monitoringWrites.length >= 15) {
+              stopCapture(); monitoringGap = 'SOURCE_RATE_LIMIT';
+              throw new HttpProblem(429, 'Monitoring capture limit has not expired; check recent saves');
+            }
+            stopCapture(); monitoringSessionId = randomUUID();
+          } else stopCapture(path === '/api/capture/monitoring/revoke');
+        }
+        return json(res, 200, monitoringStatus());
+      }
       if(path==='/api/capture/native'&&req.method==='POST') {
         const payload=await readBody(1000);
         if(Object.keys(payload).some(key=>!['enabled','consent'].includes(key))||typeof payload.enabled!=='boolean'||
           (payload.enabled&&payload.consent!==true))throw new HttpProblem(400,'Explicit source approval required');
         if(payload.enabled){
           if(!nativeCapture.available)throw new HttpProblem(409,'Use the Windows desktop app for this source');
-          await nativeCapture.enable();assertSession();
-        }else nativeCapture.pause();
+          await nativeCapture.enable();assertCaptureSession();
+        }else { ++captureEpoch; nativeCapture.pause(); }
         const native=nativeCapture.status();
         if(native.state==='error')return json(res,409,{error:native.code==='SOURCE_LIMIT'?
           'Codex source exceeds the preview limit. Capture remains off.':'Codex local session source is unavailable. Capture remains off.',code:native.code,native});
@@ -285,6 +452,7 @@ export async function startLocalWeb(options: LocalWebOptions) {
         if(Object.keys(payload).some(key=>!['enabled','source','consent'].includes(key))||
           payload.source!=='notepad.exe'||typeof payload.enabled!=='boolean'||
           (payload.enabled&&payload.consent!==true))throw new HttpProblem(400,'Explicit Notepad approval required');
+        if (!payload.enabled) ++captureEpoch;
         stopKeyboard(); keyboardApproved=payload.enabled;
         return json(res,200,{enabled:keyboardApproved,source:'notepad.exe'});
       }
@@ -313,6 +481,7 @@ export async function startLocalWeb(options: LocalWebOptions) {
             throw new HttpProblem(409,'Too many desktop apps approved for this session');
           approvedFieldSources.add(source);
         } else {
+          ++captureEpoch;
           approvedFieldSources.delete(source); fieldLastDigests.delete(source);
           if (approvedFieldSources.size === 0) fieldGap = null;
         }
@@ -334,9 +503,7 @@ export async function startLocalWeb(options: LocalWebOptions) {
         return json(res,result.saved?201:200,{saved:result.saved,quality:'draft_snapshot',redactions:result.redactions});
       }
       if(path==='/api/capture/pause'&&req.method==='POST') {
-        await readBody(1000);nativeCapture.pause();stopKeyboard();stopFields();
-        writerToken=undefined;writerOrigin=undefined;writerExpiresAt=0;pairSecret=undefined;pairExpiresAt=0;
-        allowedCaptureHosts.clear();offeredCaptureHosts.clear();
+        await readBody(1000);stopCapture();
         return json(res,200,{paused:true});
       }
       if(path==='/api/capture/review'&&req.method==='GET') {
@@ -522,6 +689,9 @@ export async function startLocalWeb(options: LocalWebOptions) {
         return json(res, 200, { pairingCode: `psv2:${port}:${pairSecret}`, expiresAt: new Date(pairExpiresAt).toISOString() });
       }
       if (path === '/api/bridge/revoke' && req.method === 'POST') {
+        // This legacy endpoint historically accepts an empty HTTP body.
+        // It still revokes pending pairing/writes in the independent capture epoch.
+        assertCaptureSession(); ++captureEpoch;
         writerToken = undefined; writerOrigin = undefined; writerExpiresAt = 0; pairSecret = undefined; pairExpiresAt = 0;allowedCaptureHosts.clear();offeredCaptureHosts.clear();
         return json(res, 200, { revoked: true });
       }

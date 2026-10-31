@@ -1,10 +1,18 @@
 # PromteSaver development rules (v0.9)
 
-**Source of truth**: README.md, docs/HANDOFF.md, docs/RELEASE_NOTES_V0_9.md, docs/ARCHITECTURE_V0_9.md, docs/MARKET_READINESS_GATES.md. Older milestone documents describe an aspiration, not shipped functionality.
+> **Documentation scope (31 October 2026): Current reference.** Use the current objective for priorities and the readiness/test records for acceptance; dated results retain their original scope. [Core objective](docs/CORE_OBJECTIVE.md) | [Documentation index](docs/DOCUMENTATION_INDEX.md)
+
+**Source of truth**: docs/CORE_OBJECTIVE.md and docs/PRODUCT_DIRECTION.md define the product; README.md, docs/HANDOFF.md, docs/READINESS_V0_9.md, docs/ARCHITECTURE_V0_9.md, docs/TEST_REPORT_V0_9.md and docs/MARKET_READINESS_GATES.md define implementation and evidence. docs/DOCUMENTATION_INDEX.md labels current and historical references. Older milestone documents describe their original scope, not current shipped functionality.
 
 ## Product mission
 
-Make a trustworthy offline-first prompt memory and reuse tool for developers and daily users, with low startup/idle cost on Windows and macOS. You can improve architecture and usability proactively, but you must distinguish **tested locally**, **synthetic only**, **untested on OS/browser**, and **not implemented** in each release note.
+**31 October v1 override:** [V1_CORE_REQUESTS.md](V1_CORE_REQUESTS.md) preserves the owner's latest two requests verbatim. The immediate product is one visibly consented Windows text recorder with one monitoring agreement and Record/Stop; remove native browser/per-app connection setup. Review [the v1 contract](docs/designs/V1_MONITORING_CORE.md) before implementation. The owner explicitly replaced per-source onboarding with session-level monitoring consent; retain producer-side protected-field checks, no implicit recording, local encryption and accurate coverage. Broader AI/reuse/sync features are deferred. The supported-native-fields increment is not the complete all-input/browser recorder.
+
+EGM artifact directory: docs/designs
+
+Build a Windows desktop prompt memory app that automatically saves permitted text from explicitly approved sources, preserves source evidence, and helps users review and reuse useful instructions. The local library is supporting infrastructure. Windows is the immediate platform; macOS follows a proven Windows workflow. Optional daily AI review and contextual cross-app suggestions remain goals, not implemented functionality. Low startup/idle cost is a measured requirement, not an established guarantee. Distinguish **tested locally**, **synthetic only**, **untested on OS/browser**, and **not implemented** in each release note.
+
+Prioritize capture reliability, source exclusions, lifecycle, installability and demonstrated reuse before secondary dashboard work. The current compiled Windows host is WinForms plus a private Node sidecar; Tauri remains a separate experimental source path. An unsigned setup from an earlier source tree does not validate the latest code. Preserve the owner's verbatim request in docs/PRODUCT_DIRECTION.md.
 
 ## Non-negotiable security and correctness
 

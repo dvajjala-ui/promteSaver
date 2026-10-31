@@ -1,5 +1,13 @@
 # Windows / macOS pilot guide - v0.9
 
+> **Documentation scope (31 October 2026): Current reference.** Use the current objective for priorities and the readiness/test records for acceptance; dated results retain their original scope. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
+## Current pilot order — 31 October 2026
+
+Prioritize the Windows native capture workflow in [CORE_OBJECTIVE.md](CORE_OBJECTIVE.md). Rebuild the latest source first: the final recorded bundled rebuild stopped at an EXE file lock, so the earlier setup is not a newly validated ValuePattern build. Use synthetic/harmless text and record exact source, OS, artifact and date.
+
+The native first test in section 1 should also verify that focusing existing text does not save it, editing then does, and protected/read-only/unknown controls remain excluded. Follow with pause, lock, restart, recovery and current-build setup checks. Approval is keyed by executable name; actual third-party editor coverage, slow UIA providers, fast sends and dictation remain open. Browser permissions/sites, live AI and macOS fallback are separate tracks, not prerequisites for claiming a narrow native draft pilot.
+
 Start with harmless test prompts. The new [Windows desktop preview](WINDOWS_DESKTOP_PREVIEW.md) has an unsigned per-user setup prototype and a portable option; neither is an everyday recorder certified on real sites. The browser helper needs explicit pairing and per-site approval. The Codex transcript producer remains disabled for real sessions because private/protected-session exclusion is unverified. Mac still uses the source/browser flow below; no macOS native app was built.
 
 ## 1. Open the Windows desktop preview

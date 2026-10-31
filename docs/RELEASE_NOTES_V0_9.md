@@ -1,5 +1,15 @@
 # v0.9 - Capture & AI Developer Pilot
 
+> **Documentation scope (31 October 2026): Current reference with historical records.** Read the 31 October continuation first. Older plans, observations, branch state and test counts are dated snapshots. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
+## 31 October 2026 — documentation alignment
+
+Aligned the Markdown set around the Windows capture → local memory → review → reuse objective, added a core objective and documentation index, corrected backlog/build/privacy guidance, and labelled historical plans and evidence. No application behavior or package version changed. The owner's original request remains verbatim in PRODUCT_DIRECTION.md.
+
+**Tested locally / synthetic only:** See the new dated section of [TEST_REPORT_V0_9.md](TEST_REPORT_V0_9.md) for documentation checks and any repeated source tests. **Untested on OS/browser:** This refresh did not run real third-party capture, native setup, browser permission/site, live-provider or Mac pilots. **Not implemented:** Universal/all-day capture, automatic daily AI review, contextual cross-app suggestions, signed release and cloud sync remain open.
+
+The latest recorded implementation source is the 27 October ValuePattern fallback below. Its compiled alternate EXE is not a new bundled setup. Dated artifact hashes and earlier install results retain their original scope.
+
 Date: 2026-10-23. Built from the uploaded v0.8 source. This release changes core functionality, not merely styling. It remains a developer pilot, not a universal recorder or signed desktop release.
 
 ## 27 October writable ValuePattern fallback

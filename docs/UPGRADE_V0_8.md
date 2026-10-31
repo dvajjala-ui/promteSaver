@@ -1,5 +1,7 @@
 # Upgrading to v0.8
 
+> **Documentation scope (31 October 2026): Version-specific reference.** Apply the stated version and component scope. Current Windows setup, vault recovery and product priorities are described in the current guides. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
 1. Stop the old local service or application. Ensure another process is not using the vault.
 2. Copy the entire vault folder to a safe location, including `keyinfo.json`, `vault.sqlite`, and any `-wal`/`-shm` files. Preserve the old source folder and password. A portable backup is useful as an additional recovery path, not a substitute for a complete stopped-folder backup.
 3. Extract v0.8 into a new folder. Use the usual Windows/macOS launcher with supported Node 24.16+ within 24.x.

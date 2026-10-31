@@ -1,5 +1,13 @@
 # Windows desktop developer preview
 
+> **Documentation scope (31 October 2026): Current reference.** Use the current objective for priorities and the readiness/test records for acceptance; dated results retain their original scope. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
+## Latest source and artifact boundary — 31 October 2026
+
+The 27 October ValuePattern fallback compiled to an alternate native EXE. Its bundled rebuild stopped because the temporary pilot held the ordinary EXE open; no new setup was produced. The setup/self-test/install observations below belong to earlier builds. The generated files may be absent or stale in a checkout; this documentation refresh did not inspect or rebuild them. Follow the build instructions before treating a package as the latest source, then bind acceptance to its hash.
+
+The next engineering gate is responsiveness with slow/large UIA providers and real-source acceptance. Current approval uses executable names with foreground checks, not publisher identity. See [core objective](CORE_OBJECTIVE.md), [next sprints](NEXT_SPRINTS.md) and [test report](TEST_REPORT_V0_9.md).
+
 This is an unsigned WinForms app and per-user setup preview built locally from this repository. It opens a native window, owns a private local vault service, and keeps pause, lock and quit controls in the Windows tray. It is for harmless personal testing. The setup is not a signed public release or verified all-day capture on real services.
 
 ## Open it

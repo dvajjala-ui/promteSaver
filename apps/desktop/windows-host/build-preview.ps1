@@ -51,11 +51,13 @@ if ($bundled) {
 [IO.File]::WriteAllText($configPath, $configSource, [Text.Encoding]::UTF8)
 $executable = Join-Path $outputDirectory 'promteSaver.exe'
 $source = Join-Path $PSScriptRoot 'Program.cs'
+$globalKeyboardSource = Join-Path $PSScriptRoot 'GlobalKeyboardCapture.cs'
 $keyboardSource = Join-Path $PSScriptRoot 'NotepadKeyboardCapture.cs'
 $fieldSource = Join-Path $PSScriptRoot 'FocusedFieldCapture.cs'
+$monitoringSource = Join-Path $PSScriptRoot 'MonitoringCapture.cs'
 $uiaRoot = Join-Path (Split-Path $compiler -Parent) 'WPF'
 $icon = Join-Path $sourceRoot 'apps/desktop/src-tauri/icons/icon.ico'
-& $compiler /nologo /target:winexe /platform:anycpu /optimize+ /warn:4 /out:$executable /win32icon:$icon /reference:System.dll /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll /reference:System.Net.Http.dll /reference:System.Web.Extensions.dll /reference:System.Security.dll ('/reference:' + (Join-Path $uiaRoot 'UIAutomationTypes.dll')) ('/reference:' + (Join-Path $uiaRoot 'UIAutomationClient.dll')) $source $keyboardSource $fieldSource $configPath
+& $compiler /nologo /target:winexe /platform:anycpu /optimize+ /warn:4 /out:$executable /win32icon:$icon /reference:System.dll /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll /reference:System.Net.Http.dll /reference:System.Web.Extensions.dll /reference:System.Security.dll ('/reference:' + (Join-Path $uiaRoot 'UIAutomationTypes.dll')) ('/reference:' + (Join-Path $uiaRoot 'UIAutomationClient.dll')) $source $globalKeyboardSource $keyboardSource $fieldSource $monitoringSource $configPath
 if ($LASTEXITCODE -ne 0) { throw "Native C# compilation failed with exit code $LASTEXITCODE." }
 Copy-Item -LiteralPath $icon -Destination (Join-Path $outputDirectory 'promteSaver.ico') -Force
 [IO.File]::WriteAllText(($executable + '.config'), '<?xml version="1.0" encoding="utf-8"?><configuration><startup><supportedRuntime version="v4.0" sku=".NETFramework,Version=v4.7.2"/></startup><runtime><AppContextSwitchOverrides value="Switch.System.Windows.Forms.DoNotSupportSelectAllShortcutInMultilineTextBox=false"/></runtime></configuration>', [Text.Encoding]::UTF8)

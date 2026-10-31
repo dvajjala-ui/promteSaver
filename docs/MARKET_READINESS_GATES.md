@@ -1,70 +1,27 @@
-# Current status: v0.9 developer pilot
+# Market readiness gates
 
-**27 October update:** The unlocked Windows preview can now save changed text from a selected, explicitly approved running desktop app when its focused control exposes writable Windows UI Automation text. A synthetic WPF pilot covered typing, paste, pre-existing text baseline, password/read-only exclusions and Pause all. Saves remain `draft_snapshot` with no send proof. Other editors, real dictation, fast-send cases, long sessions, installed setup and whole-app resources remain open. A slow accessibility provider can still block the native UI thread. The rebuilt unsigned setup passed compilation and synthetic native self-test, not an install of this build. No readiness percentage or public sale claim follows.
+> **Documentation scope (31 October 2026): Current reference.** Use the current objective for priorities and the readiness/test records for acceptance; dated results retain their original scope. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
 
-See [READINESS_V0_9.md](READINESS_V0_9.md) and [TEST_REPORT_V0_9.md](TEST_REPORT_V0_9.md) for current evidence. A native WinForms Windows preview now compiles and passes synthetic temporary-vault lifecycle checks. Its new vault opens without a password through Windows CurrentUser DPAPI; the older passphrase vault remains separate and has no native migration path. The portable folder and per-user setup prototype are unsigned and are not a clean-device/public release; the separate Tauri/Rust host still cannot compile on this machine because the Windows SDK import library is missing. Browser capture and explicit Groq source exist, but consented real-site capture and live provider behavior remain unverified. Real Codex transcript capture is disabled in the public Windows preview until private/protected-session exclusions are verified. The v0.8 matrix below is retained as historical context, not current implementation status.
+Updated: 31 October 2026. **Windows developer pilot only.** The target is the [capture → memory → review → reuse workflow](CORE_OBJECTIVE.md). The local library, source tests and compiled native preview are useful progress; there is no completed consumer release or measured market-readiness percentage.
 
-An unsigned per-user setup prototype now embeds the portable payload and passed an isolated temporary install plus synthetic self-test from the copied EXE. The normal shortcut/uninstall/update and clean-device paths remain unverified; this is still not a public installer. The native UI now puts saved prompts and source/time first, with advanced controls under More options. Its current screenshot used synthetic data.
+## Current gates
 
-The new Notepad source passed one real keyboard typing/pause pilot on Windows 11 with a temporary encrypted vault. It stores editor draft snapshots under explicit source approval, without raw key values or a send claim. It does not close the broader native-source or all-app capture gate.
-
-## Current capture-first market gates — 25 October 2026
-
-| Gate | Current evidence | Still needed before sale |
+| Gate | Recorded evidence / implementation | Required before closing the gate |
 | --- | --- | --- |
-| Windows desktop setup | Compiled WinForms EXE, bundled Node runtime/license/helper, 43 staged files verified, one-click DPAPI vault, optional off-by-default login launch UI, unsigned per-user setup with isolated install and installed-path synthetic self-test | Ordinary setup UI/Start Menu/uninstall/update, login/reboot, clean-device install, old-vault migration, cross-account recovery, signing and distribution/license review |
-| Reliable automatic prompt capture | Browser producer on synthetic composer fixtures; extension worker scoped default-off checks; private local bridge and synthetic send accepted by native vault | Human-granted permission, installed extension and repeated real-site captures on each claimed browser/site; meaningful failure receipts. Browser control still reported disabled in this chat after user enabled Chrome access. |
-| Native application sources | Opt-in Notepad keyboard-triggered editor snapshot passed one real Windows 11 typing/pause pilot; bounded internal Codex JSONL producer passed injected synthetic tests but real source remains gated off | Other Notepad versions, live protected/unknown field checks, endurance, reliable send evidence where applicable, and separate opt-in adapter acceptance for each additional app |
-| Daily review and contextual improvement | Explicit bounded offline wording review and manual related-prompt recall | Real usefulness/language evaluation; consented, budgeted end-of-day AI processing and safe cross-app suggestions if added later |
-| Trust and resource cost | Synthetic vault/security tests and backend benchmark; temporary native lifecycle | Independent privacy/security review; whole native+Node+browser startup, idle/peak RSS/CPU on 4/8 GiB devices; accessibility and recovery study |
+| Current Windows artifact | WinForms source compiled; earlier bundled preview/self-tests and setup prototype exist | Rebuild the latest ValuePattern source; bind install and lifecycle results to that exact artifact. The last bundle attempt stopped at a running EXE lock. |
+| Normal customer setup | Earlier setup passed an isolated temporary install and installed-path synthetic self-test | Ordinary setup UI, Start Menu, uninstall/data retention, reinstall/update and clean-device validation; license review and signing. A source checkout contains no generated EXE. |
+| Useful automatic desktop capture | Real Notepad typing/pause pilot; synthetic WPF typing/paste/baseline/exclusion/pause pilots; ValuePattern-only provider read test | Repeated real prompt-editor workflows, protected/private negatives, paste/IME/dictation as claimed, fast sends, gaps and recovery. Current field snapshots have no submission proof and can contain non-prompts. |
+| Responsive capture and identity | Event-triggered reads, source checks, bounds and explicit approval | Bound slow UIA providers off the UI thread, address ValuePattern allocation and executable-name consent limits; prove Pause/Lock/Quit remain responsive. |
+| Stop/start lifecycle | Source off by default; pause/lock/Quit revoke; login launch option starts locked | Real login/reboot, sleep/resume, prolonged tray use and a separately reviewed continuation policy. No all-day/resume claim today. |
+| Browser integration | Known-composer source/fixtures and scoped real unpacked-worker checks | Human-granted permission and actual helper capture on each claimed site/browser; record denial, revoke, private modes and changed layouts. No live-site result is established. |
+| Review and reuse value | Offline wording checks, explicit local keyword recall, separately reviewed AI/extraction source | Consented user evidence of useful retrieval, preserved meaning, less retyping and low interruption. Daily AI review and cross-app suggestions are not implemented. |
+| Data protection and recovery | AES-GCM payloads, wrapped archive key, Windows CurrentUser DPAPI, backup/tombstone tests | Independent review, full-DB/WAL protection, lost-key/cross-account and legacy migration paths, interruption and restore drills. Metadata remains visible. |
+| Resources and accessibility | Bounded service/DOM work and separate synthetic Node/browser samples | Whole-process startup/idle/peak CPU/RSS on real 4/8 GiB hardware; keyboard, screen-reader, DPI and zoom acceptance. |
+| Distribution and operations | Portable/setup source and consistency manifests | Signing, update/rollback, dependency notices, original-source license and support/deletion policy. Hashes are not signatures. No cloud service exists. |
+| Other platforms | Experimental Tauri source and source/browser fallback | Real macOS build, Keychain/permissions/lifecycle and device acceptance. No native Mac or mobile app is established. |
 
-No readiness percentage follows from these test counts. Do not sell or describe this preview as an all-day, all-app recorder. The older v0.8 table follows for historical decisions only.
+## Decisive user validation
 
-# Readiness gates - 0.8
+A user installs the current Windows build, approves one real supported source, gets reliable history and stop controls across several sessions, and later reuses that history with less effort. Record misses, incorrect captures, task time, edits and continued voluntary use with consent. Test totals cannot substitute for this result.
 
-A useful manual local beta is not the same product as an audited, signed, automatically capturing cross-platform desktop application. We do not infer a market-readiness percentage from test counts.
-
-| Gate | Evidence available | Remaining before public release |
-| --- | --- | --- |
-| Manual save/search/templates/history/Trash | Real storage/API tests and Chromium UI fixtures | Real Windows/Mac workflows, networked UI E2E and user sessions |
-| Upgrade / credential / recovery safety | Atomic metadata failure tests, legacy upgrades, passphrase changes, backup preview, encrypted unsaved editor recovery (best effort), tombstones | Cross-OS faults, actual existing vaults, restore drills, streaming large backups and unfinished draft semantics |
-| Resource behavior | Bounded API preview/hydration, DOM/cache modes; Node process and headless Chromium process-tree profiles; 5k/10k distinct/cached backend benchmarks | Whole-process-tree RSS/peak/idle CPU on 4-8GiB machines; realistic long prompts; 50k gates |
-| Native experience | Tauri source, runtime staging plan, actual Node child lifecycle tests | Rust compilation, frozen Cargo graph, resource packaging, native menus/clipboard/downloads and OS lifecycle |
-| Data-at-rest security | AEAD payloads and wrapped archive keys, disclosed limitations | OS keychain, fully encrypted DB/WAL, audited migration/recovery; independent review |
-| Browser helper | Write-only origin-bound bridge and revocation tests | Actual Chrome/Edge supported-site and protected/private-field tests, extension publication review |
-| Accessibility | Semantic controls, HTML dialogs, keyboard fixture checks, responsive screenshot QA | NVDA/VoiceOver, zoom, contrast audit and complete WCAG assessment |
-| Writing Studio | Encrypted profiles, separate excerpt consent, opt-in heuristic checks, v3 backup, Chromium fixture and Node API tests | Independent usability/a11y testing, true language-quality evaluation, native integration and live browser/service checks; AI rewriting only with explicit consent |
-| Native capture | Synthetic policies and historical Windows proof only | Per-source opt-in, trustworthy submit evidence, visible stop/pause, secure OS adapter validation |
-| Distribution | Complete source and checksums; explicit limitations | Original-source license decision, third-party notices, signing/notarization, updates/uninstall/privacy policy |
-| Customer validation | Structured study protocol documented | Eight consented developer/everyday-user sessions; fix observed friction before adding speculative features |
-| Cloud and AI | Deliberately absent | Optional later scope, independently threat-modelled; not required for first manual offline beta |
-
-## v0.8 evidence added, without closing native release gates
-
-123 Node tests and 21 Chromium fixture scenarios cover bounded async key derivation, cancellation/session races, diagnostic privacy, stable heap ranking and build-resource validation. On-demand diagnostics expose service-only memory. A manual native preview workflow is now included but has not run here. No installer, whole-app memory target, pinned toolchain, live browser E2E, OS keychain or independent security gate is closed by these source changes.
-
-## Product decisions for the next release
-
-**P0: prove the beta on the real target systems.** Run the supplied live browser tests, upgrade/backup drill, keyboard workflows and extension negative cases on Windows and macOS. Do not wait for background capture to validate the manual library.
-
-**P0: finish native packaging, not another UI rewrite.** Compile/fix the supplied host; verify child shutdown and resource integrity; resolve source/transitive licenses; sign packages only after the security checklist passes.
-
-**P0: strengthen the storage boundary.** Prototype OS-protected key unwrapping and full-file encryption behind the existing archive contract. Include legacy migration, recovery, lost-key and WAL tests. Do not remove honest metadata-leakage warnings until evidence supports that claim.
-
-**P1: scale safely.** Stream portable backups; choose encrypted indexed search using a measured latency/memory/leakage budget; add peak-memory tests with large body/history datasets. Cold scans and small caches remain honest interim choices.
-
-**P1: daily utility.** Verified OS global picker, accessibility improvements, explicit retention controls and outcome-based reusable templates. Add features in response to observed tasks, not a competitor checklist.
-
-**P2: native collection, then optional sync/AI.** Prove permissions, exclusions and evidence quality per source. Keep cloud/AI processing off unless the user explicitly enables the specific purpose and data scope.
-
-## Device pilot exit criteria
-
-No crashes or data loss across setup/restart/edit/lock/restore; reliable copy/template workflows offline; cross-device backup restore; no stale plaintext view after lock; safe denial of permissions; successful native exit; measured resource budgets; screen-reader usability; no unsupported marketing claims. Record failures with synthetic data and add regressions before raising release status.
-
-
-## Writing Studio-specific release criteria
-
-- Recruit opt-in participants to check whether inferred tone/length habits produce **useful** instructions and whether examples are kept/private as they expect. Measure task completion and accidental personal-data disclosure, not just computed metrics.
-- Evaluate punctuation and repeated-word false-positive rates with synthetic, varied English text. Test screen-reader announcements, keyboard flow, 200% zoom and cramped windows on actual OS WebViews.
-- No floating inline assistant until editor selection/blur/submit race conditions, protected fields, per-domain exclusions, visibility and pause/revoke have been validated. OS global capture is still off.
-- No production market-readiness percentage should be inferred solely from 96 passing backend tests or 16 fixture scenarios.
+The detailed [readiness matrix](READINESS_V0_9.md), [pilot guide](PILOT_GUIDE_V0_9.md) and [dated test report](TEST_REPORT_V0_9.md) remain separate. Earlier v0.8 release gates are preserved in the versioned architecture, release and verification records listed in the [documentation index](DOCUMENTATION_INDEX.md); they are not the current priority order.

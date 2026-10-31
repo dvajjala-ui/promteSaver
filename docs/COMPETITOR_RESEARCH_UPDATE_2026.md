@@ -1,5 +1,7 @@
 # Market and user signals — 22 October 2026
 
+> **Documentation scope (31 October 2026): Historical research.** References and findings retain their original consultation dates; this refresh did not verify them again. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
 This is a **qualitative product-direction memo**, not a user survey or proof of market size. Product-site descriptions are marketing claims, and Reddit posts are self-selected and often from app builders. We independently implement our code; the research is about user problems and interaction patterns, **not source-code copying**.
 
 ## Products and patterns

@@ -1,5 +1,7 @@
 # promteSaver 0.4.0 — Recovery and resource profiling beta
 
+> **Documentation scope (31 October 2026): Historical plan or implementation snapshot.** The original body is preserved for context. Its proposed stack, milestones and then-current feature claims are superseded by current guidance. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
 22 October 2026. This source ZIP is a **development preview**, not a signed Windows or macOS installable application. It has not been deployed or pushed to GitHub. Read the upgrade warning in the README before using a real vault.
 
 ## Delivered and tested

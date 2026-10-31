@@ -38,21 +38,28 @@ namespace PromteSaver.WindowsPreview {
         readonly Func<string, string, Task> onSnapshot;
         readonly Action<string> onGap;
         readonly Action<string> onTrace;
-        readonly Timer settle = new Timer { Interval = 1300 };
+        readonly bool allowValuePatternFallback;
+        readonly Timer settle = new Timer { Interval = 800 };
         readonly HookProcedure keyboardProcedure;
         readonly AutomationFocusChangedEventHandler focusProcedure;
         readonly AutomationEventHandler textProcedure;
         readonly AutomationPropertyChangedEventHandler valueProcedure;
         IntPtr hook, pendingWindow, boundWindow, lastSavedWindow, cachedWindow;
         AutomationElement boundElement, lastSavedElement;
-        string boundProcess, lastSavedText, lastGap, cachedProcess;
+        string boundProcess, lastSavedText, lastGap, cachedProcess, currentFieldId;
         bool enabled, busy, retryAfterBusy, textSubscribed, valueSubscribed;
         int generation;
 
+        /// <summary>Fired (on UI thread) when focus moves from one field/window to another.
+        /// Subscribers (e.g. GlobalKeyboardCapture) should flush their buffers.</summary>
+        internal event Action<string> FieldSwitched; // arg = new bound process name (may be null)
+
         internal FocusedFieldCapture(Control owner, Func<string, bool> isApprovedProcess,
-            Func<string, string, Task> onSnapshot, Action<string> onGap, Action<string> onTrace = null) {
+            Func<string, string, Task> onSnapshot, Action<string> onGap, Action<string> onTrace = null,
+            bool allowValuePatternFallback = true) {
             this.owner = owner; this.isApprovedProcess = isApprovedProcess;
             this.onSnapshot = onSnapshot; this.onGap = onGap; this.onTrace = onTrace;
+            this.allowValuePatternFallback = allowValuePatternFallback;
             keyboardProcedure = KeyEvent;
             focusProcedure = FocusChanged;
             textProcedure = TextChanged;
@@ -117,6 +124,8 @@ namespace PromteSaver.WindowsPreview {
                 lower.Contains("credit card") || lower.Contains("cvv") || lower.Contains("otp") || lower.Contains("secret key");
         }
         internal bool Enabled { get { return enabled; } }
+        // An opaque binding episode, not a stable Windows control identity.
+        internal string CurrentFieldId { get { return currentFieldId; } }
         internal void Start() {
             if (enabled) return;
             if (owner == null || owner.IsDisposed || !owner.IsHandleCreated) throw new InvalidOperationException("The desktop window is unavailable.");
@@ -202,11 +211,17 @@ namespace PromteSaver.WindowsPreview {
             try { return Automation.Compare(a, b); } catch { return false; }
         }
         void Unbind() {
+            string previousProcess = boundProcess;
             if (boundElement != null) {
                 if (textSubscribed) try { Automation.RemoveAutomationEventHandler(TextPattern.TextChangedEvent, boundElement, textProcedure); } catch { }
                 if (valueSubscribed) try { Automation.RemoveAutomationPropertyChangedEventHandler(boundElement, valueProcedure); } catch { }
             }
-            boundElement = null; boundWindow = IntPtr.Zero; boundProcess = null; textSubscribed = false; valueSubscribed = false;
+            boundElement = null; boundWindow = IntPtr.Zero; boundProcess = null; currentFieldId = null; textSubscribed = false; valueSubscribed = false;
+            // Notify subscribers that focus left a field — they should flush keystroke buffers
+            if (previousProcess != null) {
+                var ev = FieldSwitched;
+                if (ev != null) ev(null);
+            }
         }
         static bool InsideWindow(AutomationElement element, AutomationElement window) {
             var cursor = element;
@@ -264,17 +279,23 @@ namespace PromteSaver.WindowsPreview {
             Unbind();
             try {
                 string baseline;
-                if (!TryReadEditorText(focused, out baseline)) { Trace("focus-no-readable-pattern"); Gap("FIELD_UNSUPPORTED"); return; }
+                if (!TryReadEditorText(focused, out baseline, allowValuePatternFallback)) { Trace("focus-no-readable-pattern"); Gap("FIELD_UNSUPPORTED"); return; }
                 // Existing text predating approval/focus is a baseline, not a
                 // newly observed draft. Keep it only in memory for comparison.
                 lastSavedText = baseline != null && baseline.Length <= MaxSnapshot ? baseline : null;
                 lastSavedElement = focused; lastSavedWindow = window;
                 boundElement = focused; boundWindow = window; boundProcess = process;
+                currentFieldId = Guid.NewGuid().ToString("D");
                 Trace("focus-bound");
                 try { Automation.AddAutomationEventHandler(TextPattern.TextChangedEvent, focused, TreeScope.Element, textProcedure); textSubscribed = true; }
                 catch { }
-                try { Automation.AddAutomationPropertyChangedEventHandler(focused, TreeScope.Element, valueProcedure, ValuePattern.ValueProperty); valueSubscribed = true; }
-                catch { }
+                // Value-property events may allocate the full value before our
+                // callback runs. The bounded monitoring mode uses text events
+                // and key activity only, never this payload-bearing event.
+                if (allowValuePatternFallback) {
+                    try { Automation.AddAutomationPropertyChangedEventHandler(focused, TreeScope.Element, valueProcedure, ValuePattern.ValueProperty); valueSubscribed = true; }
+                    catch { }
+                }
             } catch { Unbind(); Gap("SOURCE_UNAVAILABLE"); }
         }
         bool TryReadFocused(IntPtr expectedWindow, out string processName, out string text, out string gap) {
@@ -291,13 +312,21 @@ namespace PromteSaver.WindowsPreview {
                 return false;
             }
             try {
-                if (!TryReadEditorText(focused, out text)) { gap = "FIELD_UNSUPPORTED"; return false; }
+                if (!TryReadEditorText(focused, out text, allowValuePatternFallback)) { gap = "FIELD_UNSUPPORTED"; return false; }
+                // Providers can block while the foreground/focus/protection
+                // changes. Revalidate after the getter before releasing text.
+                string verifiedProcess, verifiedReason; AutomationElement verified;
+                if (!enabled || !TryGetApprovedFocus(expectedWindow, out verifiedProcess, out verified, out verifiedReason) ||
+                    !String.Equals(processName, verifiedProcess, StringComparison.OrdinalIgnoreCase) ||
+                    !SameEditor(focused, verified, expectedWindow, GetForegroundWindow())) {
+                    text = null; processName = null; return false;
+                }
                 if (text != null && text.Length > MaxSnapshot) { text = null; gap = "SOURCE_LIMIT"; return false; }
                 if (!ShouldSave(null, text)) { text = null; return false; }
                 return true;
             } catch { text = null; gap = "SOURCE_UNAVAILABLE"; return false; }
         }
-        internal static bool TryReadEditorText(AutomationElement focused, out string text) {
+        internal static bool TryReadEditorText(AutomationElement focused, out string text, bool allowValuePatternFallback = true) {
             text = null;
             object pattern;
             if (focused.TryGetCurrentPattern(TextPattern.Pattern, out pattern)) {
@@ -306,7 +335,9 @@ namespace PromteSaver.WindowsPreview {
                     return true;
                 } catch { text = null; }
             }
-            if (focused.TryGetCurrentPattern(ValuePattern.Pattern, out pattern)) {
+            // ValuePattern cannot bound its returned allocation. The isolated
+            // monitoring worker deliberately reports these editors unsupported.
+            if (allowValuePatternFallback && focused.TryGetCurrentPattern(ValuePattern.Pattern, out pattern)) {
                 text = ((ValuePattern)pattern).Current.Value;
                 return true;
             }

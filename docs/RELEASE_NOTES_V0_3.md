@@ -1,5 +1,7 @@
 # v0.3 Reliability Beta
 
+> **Documentation scope (31 October 2026): Historical plan or implementation snapshot.** The original body is preserved for context. Its proposed stack, milestones and then-current feature claims are superseded by current guidance. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
 Date: 22 October 2026. Based on the supplied v0.2 source ZIP, not an assumed GitHub checkout.
 
 ## Implemented in this release

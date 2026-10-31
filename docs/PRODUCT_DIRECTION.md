@@ -1,5 +1,15 @@
 # Product owner's correction — 24 October 2026
 
+> **Documentation scope (31 October 2026): Current reference.** Use the current objective for priorities and the readiness/test records for acceptance; dated results retain their original scope. [Core objective](CORE_OBJECTIVE.md) | [Documentation index](DOCUMENTATION_INDEX.md)
+
+## Current objective — 31 October 2026
+
+Build the Windows desktop capture → local memory → review → reuse workflow first. [CORE_OBJECTIVE.md](CORE_OBJECTIVE.md) states the current objective, existing capabilities and decisive user milestone; [NEXT_SPRINTS.md](NEXT_SPRINTS.md) orders the remaining work. macOS, optional sync and broader source coverage follow a proven Windows workflow. The request below remains verbatim product evidence.
+
+The reviewed source now contains a WinForms app, an unsigned setup prototype and an approved focused-field draft adapter. Narrow real Notepad and synthetic Windows editor pilots exist. This advances the native direction below without establishing broad prompt capture, all-day reliability, automatic daily AI review or cross-app suggestions. The last bundled setup predates the latest ValuePattern source change. See [readiness](READINESS_V0_9.md) and [dated evidence](TEST_REPORT_V0_9.md).
+
+## Preserved owner direction
+
 This instruction supersedes feature-priority assumptions in older plans. It does not waive privacy, source consent, evidence, encryption or verification requirements.
 
 ## 25 October 2026 — single-install capture direction

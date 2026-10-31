@@ -1,5 +1,7 @@
 # Browser Companion - v0.9 developer pilot
 
+> **Documentation scope (31 October 2026): Current reference.** Use the current objective for priorities and the readiness/test records for acceptance; dated results retain their original scope. [Core objective](../../docs/CORE_OBJECTIVE.md) | [Documentation index](../../docs/DOCUMENTATION_INDEX.md)
+
 Opt-in send-intent snapshots and optional local writing hints on three approved AI hosts. Manual focused-editor preview/save remains available on the earlier wider allowlist. This is unpacked extension source, **not a validated/store-published extension**.
 
 Read the [complete pilot guide](../../docs/PILOT_GUIDE_V0_9.md) first. Load this directory (or the portable preview's `browser-helper/` folder) with Chrome/Edge Developer mode -> Load unpacked. Unlock the vault, choose **Connect browser** in the Windows preview (or approve browser snapshots in Settings in the source app), pair the popup, then enable each supported site and optional hints. Both approval layers are required. Keep the service running and unlocked.
