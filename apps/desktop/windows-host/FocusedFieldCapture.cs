@@ -1,7 +1,8 @@
 // Opt-in Windows text-field snapshots for individually approved desktop apps.
 // Keyboard events carry no key values here. Accessibility text changes can
 // also trigger a snapshot after paste or dictation when an app exposes them.
-// Browsers, credential tools and protected fields are excluded at the producer.
+// Browsers are allowed — UIA can read field text from Chromium-based browsers.
+// Credential tools and protected fields are excluded at the producer.
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -23,9 +24,8 @@ namespace PromteSaver.WindowsPreview {
         [DllImport("kernel32.dll", CharSet = CharSet.Auto)] static extern IntPtr GetModuleHandle(string module);
 
         static readonly HashSet<string> blockedProcesses = new HashSet<string>(StringComparer.OrdinalIgnoreCase) {
-            // Native collection cannot distinguish a private browser window or site.
-            "chrome", "msedge", "firefox", "brave", "opera", "vivaldi", "chromium", "iexplore",
-            "tor", "waterfox", "floorp", "zen", "safari", "arc", "browser", "webview2", "msedgewebview2",
+            // Browsers are intentionally allowed — UIA can read field text from browser
+            // address bars and edit fields without intercepting all keystrokes.
             // Do not observe operating-system authentication or password managers.
             "credentialuibroker", "credentialui", "logonui", "consent", "lsass", "securityhealthsystray",
             "applicationframehost", "svchost", "systemsettings", "textinputhost", "explorer", "codex-computer-use",
@@ -217,15 +217,15 @@ namespace PromteSaver.WindowsPreview {
                 if (valueSubscribed) try { Automation.RemoveAutomationPropertyChangedEventHandler(boundElement, valueProcedure); } catch { }
             }
             boundElement = null; boundWindow = IntPtr.Zero; boundProcess = null; currentFieldId = null; textSubscribed = false; valueSubscribed = false;
-            // Notify subscribers that focus left a field — they should flush keystroke buffers
-            if (previousProcess != null) {
-                var ev = FieldSwitched;
-                if (ev != null) ev(null);
-            }
+            // Notify subscribers that focus left a field — pass the old process name
+            // so consumers (e.g. GlobalKeyboardCapture) know which app just left.
+            var ev = FieldSwitched;
+            if (ev != null) ev(previousProcess);
         }
         static bool InsideWindow(AutomationElement element, AutomationElement window) {
             var cursor = element;
-            for (int depth = 0; depth < 40 && cursor != null; depth++) {
+            // Increased from 40 to 80 to handle deep WPF and Electron UI trees
+            for (int depth = 0; depth < 80 && cursor != null; depth++) {
                 if (Automation.Compare(cursor, window)) return true;
                 cursor = TreeWalker.ControlViewWalker.GetParent(cursor);
             }

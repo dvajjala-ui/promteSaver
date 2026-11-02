@@ -1,11 +1,6 @@
-// Desktop field capture is limited to an explicitly approved process. Keep this
-// denylist aligned with the native producer; browser privacy cannot be proven
-// by a generic Windows text-field observer.
+// Desktop field capture allows browsers and general applications.
+// Password managers, credential tools, and OS authentication remain excluded.
 const excluded = new Set([
-  'chrome.exe', 'msedge.exe', 'firefox.exe', 'brave.exe', 'opera.exe',
-  'vivaldi.exe', 'chromium.exe', 'iexplore.exe', 'tor.exe', 'waterfox.exe',
-  'floorp.exe', 'zen.exe', 'safari.exe', 'arc.exe', 'browser.exe',
-  'webview2.exe', 'msedgewebview2.exe',
   'bitwarden.exe', '1password.exe', 'keepass.exe', 'keepassxc.exe',
   'lastpass.exe', 'dashlane.exe', 'nordpass.exe', 'protonpass.exe',
   'enpass.exe', 'roboform.exe',

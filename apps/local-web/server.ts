@@ -72,6 +72,9 @@ export interface LocalWebOptions { directory: string; port?: number; idleMinutes
   desktop?:boolean;
   /** Synthetic source injection for local tests, never accepted through HTTP. */
   nativeSourceDirectory?:string;
+  monitoringLimitSaves?: number;
+  monitoringLimitBytes?: number;
+  monitoringRateLimit?: number;
 }
 export async function startLocalWeb(options: LocalWebOptions) {
   const vault = new LocalVault(options.directory);
@@ -91,15 +94,20 @@ export async function startLocalWeb(options: LocalWebOptions) {
   let monitoringSequence = 0;
   let monitoringGap: string | null = null;
   let monitoringLastSavedAt: string | null = null;
-  const monitoringLimitSaves = 200, monitoringLimitBytes = 2 * 1024 * 1024;
+  // Configurable limits: defaults match contract tests (200 / 2MB / 15), desktop sidecar passes 10,000 / 20MB / 30.
+  const monitoringLimitSaves = options.monitoringLimitSaves ?? 200;
+  const monitoringLimitBytes = options.monitoringLimitBytes ?? 2 * 1024 * 1024;
+  const monitoringRateLimit = options.monitoringRateLimit ?? 15;
   let monitoringSavedCount = 0, monitoringInputBytes = 0;
   const monitoringDigests = new Map<string, {source: string; digest: string}>();
-  // Keep admission history across Record/Stop/revoke/lock to prevent resetting
-  // the per-process, global monitoring limit by toggling the recording session.
-  const monitoringWrites: number[] = [];
+  // S2: Separate rate-limit windows for UIA snapshots vs. keystroke chunks so
+  // a fast typist doesn't exhaust the UIA rate limit (and vice versa).
+  const monitoringWrites: number[] = [];    // UIA /monitoring/snapshot writes
+  const keystrokeWrites: number[] = [];     // keystroke-chunk writes
   const pruneMonitoringWrites = () => {
     const cutoff = Date.now() - 60_000;
     while (monitoringWrites.length && monitoringWrites[0]! <= cutoff) monitoringWrites.shift();
+    while (keystrokeWrites.length && keystrokeWrites[0]! <= cutoff) keystrokeWrites.shift();
   };
   const monitoringStatus = () => ({available: options.desktop === true,
     approved: vault.status().unlocked && monitoringApproved,
@@ -137,7 +145,9 @@ export async function startLocalWeb(options: LocalWebOptions) {
   const stopCapture = (revoke = false) => {
     ++captureEpoch;
     monitoringSessionId = null; monitoringSequence = 0; monitoringDigests.clear();
-    if (revoke) { monitoringApproved = false; monitoringLastSavedAt = null; }
+    if (revoke) {
+      monitoringApproved = false; monitoringLastSavedAt = null;
+    }
     nativeCapture.pause(); stopKeyboard(); stopFields();
     writerToken = undefined; writerOrigin = undefined; writerExpiresAt = 0;
     pairSecret = undefined; pairExpiresAt = 0;
@@ -337,7 +347,7 @@ export async function startLocalWeb(options: LocalWebOptions) {
             throw new HttpProblem(409, 'Monitoring increment capacity reached; recording is stopped');
           }
           pruneMonitoringWrites();
-          if (monitoringWrites.length >= 15) {
+          if (monitoringWrites.length >= monitoringRateLimit) {
             stopCapture(); monitoringGap = 'SOURCE_RATE_LIMIT';
             throw new HttpProblem(429, 'Monitoring stopped at the capture limit; check recent saves');
           }
@@ -371,7 +381,8 @@ export async function startLocalWeb(options: LocalWebOptions) {
               typeof payload.text !== 'string' || !payload.text.trim() || payload.text.length > 50_000 ||
               typeof payload.recordedAt !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(payload.recordedAt) ||
               !Number.isFinite(Date.parse(payload.recordedAt as string)) ||
-              Math.abs(Date.now() - Date.parse(payload.recordedAt as string)) > 300_000)
+              // S4: Extended from ±5min to ±15min to handle sleep/wake cycles
+              Math.abs(Date.now() - Date.parse(payload.recordedAt as string)) > 900_000)
             throw new HttpProblem(400, 'Invalid keystroke chunk');
           if (!monitoringApproved || !monitoringSessionId || payload.sessionId !== monitoringSessionId)
             throw new HttpProblem(409, 'Monitoring is stopped or this recording session expired');
@@ -382,9 +393,17 @@ export async function startLocalWeb(options: LocalWebOptions) {
             throw new HttpProblem(409, 'Monitoring increment capacity reached; recording is stopped');
           }
           pruneMonitoringWrites();
-          if (monitoringWrites.length >= 15) {
+          // Keystroke path has a generous separate rate limit so typing doesn't starve UIA
+          if (keystrokeWrites.length >= monitoringRateLimit * 2) {
             stopCapture(); monitoringGap = 'SOURCE_RATE_LIMIT';
             throw new HttpProblem(429, 'Monitoring stopped at the capture limit; check recent saves');
+          }
+          // S3: Cross-pipeline dedup — if UIA already saved this exact text for
+          // this app in the current session, skip the keystroke chunk.
+          const keystrokeDigest = createHash('sha256').update(payload.text as string).digest('hex');
+          const existing = monitoringDigests.get('keystroke:' + source);
+          if (existing?.digest === keystrokeDigest) {
+            return json(res, 200, {saved: false, duplicate: true, quality: 'draft_snapshot', monitoring: monitoringStatus()});
           }
           const record = {schemaVersion: 1 as const, id: payload.eventId as string,
             deviceId: 'windows-monitoring-session' as const, sourceSequence: monitoringSequence + 1,
@@ -396,8 +415,11 @@ export async function startLocalWeb(options: LocalWebOptions) {
             sourceMethod: 'editor_snapshot' as const, origin: 'unknown' as const, redactions: 0};
           const result = archive.saveMonitoringCapture(record);
           if (result.saved) {
-            ++monitoringSequence; monitoringWrites.push(Date.now());
+            ++monitoringSequence; keystrokeWrites.push(Date.now());
             ++monitoringSavedCount; monitoringInputBytes += inputBytes;
+            // Store digest under keystroke namespace for cross-engine dedup
+            monitoringDigests.set('keystroke:' + source, {source, digest: keystrokeDigest});
+            if (monitoringDigests.size > 256) monitoringDigests.delete(monitoringDigests.keys().next().value!);
             monitoringLastSavedAt = record.recordedAt; monitoringGap = null;
             if (monitoringSavedCount === monitoringLimitSaves || monitoringInputBytes === monitoringLimitBytes) {
               stopCapture(); monitoringGap = 'MONITORING_CAPACITY';
@@ -413,7 +435,8 @@ export async function startLocalWeb(options: LocalWebOptions) {
         if (path === '/api/capture/monitoring/consent') {
           if (Object.keys(payload).length !== 1 || payload.consent !== true)
             throw new HttpProblem(400, 'Explicit monitoring agreement required');
-          stopCapture(); monitoringApproved = true;
+          stopCapture(true); // revoke + reset counters before re-approving
+          monitoringApproved = true;
         } else {
           if (Object.keys(payload).length) throw new HttpProblem(400, 'Expected an empty monitoring request');
           if (path === '/api/capture/monitoring/start') {
@@ -477,8 +500,9 @@ export async function startLocalWeb(options: LocalWebOptions) {
           (payload.enabled&&payload.consent!==true))throw new HttpProblem(400,'Explicit approved desktop app required');
         const source=payload.source;
         if(payload.enabled) {
-          if(!approvedFieldSources.has(source)&&approvedFieldSources.size>=8)
-            throw new HttpProblem(409,'Too many desktop apps approved for this session');
+          // S7: raised from 8 to 20 to avoid silent failures with many apps open
+          if(!approvedFieldSources.has(source)&&approvedFieldSources.size>=20)
+            throw new HttpProblem(409,'Too many desktop apps approved for this session; revoke one first');
           approvedFieldSources.add(source);
         } else {
           ++captureEpoch;

@@ -31,7 +31,7 @@ test('monitoring contract admits only bounded draft evidence with opaque session
   reject(value => { value.surface.editorId = 'focused-field'; });
   reject(value => { value.surface.editorId = '00000000-0000-1000-8000-000000000000'; });
   reject(value => { value.id = 'not-an-opaque-observation'; });
-  reject(value => { value.surface.appId = 'chrome.exe'; });
+  reject(value => { value.surface.appId = '1password.exe'; });
   reject(value => { value.surface.appId = 'bitwarden.exe'; });
   reject(value => { value.surface.appId = 'SyntheticEditor.exe'; });
   reject(value => { value.surface.classification = 'prompt'; });

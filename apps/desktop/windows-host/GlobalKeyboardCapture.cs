@@ -1,7 +1,9 @@
 // Global low-level keyboard hook that reconstructs typed text per foreground window.
 // Compatible with .NET Framework 4.7.2 / C# 5 (csc.exe from Framework v4.0.30319).
 // Requires no elevated permissions or UIAccess — WH_KEYBOARD_LL runs at normal user level.
-// Does NOT read key values for blocked processes (browsers, credential tools, password managers).
+// Browsers are NOT blocked — URL/site context is captured via the UIA worker.
+// Ctrl-held keys are suppressed to avoid emitting wrong characters for shortcuts.
+// ToUnicodeEx is used for layout-correct character reconstruction (non-QWERTY safe).
 // Emits text chunks on Enter/Return or after a configurable idle period.
 // All methods run on the UI/message-pump thread; no cross-thread mutation of buffers.
 using System;
@@ -65,6 +67,20 @@ namespace PromteSaver.WindowsPreview {
         [DllImport("user32.dll")]
         static extern short GetKeyState(int nVirtKey);
 
+        [DllImport("user32.dll")]
+        static extern uint GetWindowThreadProcessId(IntPtr hWnd, IntPtr lpdwProcessId);
+
+        [DllImport("user32.dll")]
+        static extern IntPtr GetKeyboardLayout(uint idThread);
+
+        // Converts a virtual key + scan code to a Unicode character using the thread's active keyboard layout.
+        [DllImport("user32.dll")]
+        static extern int ToUnicodeEx(uint wVirtKey, uint wScanCode, byte[] lpKeyState, StringBuilder pwszBuff, int cchBuff, uint wFlags, IntPtr dwhkl);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        static extern bool GetKeyboardState(byte[] lpKeyState);
+
         [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
         static extern IntPtr GetModuleHandle(string lpModuleName);
 
@@ -72,21 +88,19 @@ namespace PromteSaver.WindowsPreview {
         const int VK_BACK      = 0x08;
         const int VK_TAB       = 0x09;
         const int VK_RETURN    = 0x0D;
-        const int VK_SHIFT     = 0x10;
-        const int VK_CAPITAL   = 0x14;
         const int VK_ESCAPE    = 0x1B;
         const int VK_SPACE     = 0x20;
         const int VK_DELETE    = 0x2E;
-        const int VK_LSHIFT    = 0xA0;
-        const int VK_RSHIFT    = 0xA1;
+        const int VK_LCONTROL  = 0xA2;
+        const int VK_RCONTROL  = 0xA3;
+        const int VK_V         = 0x56; // used to detect Ctrl+V (paste)
 
         // ── Blocked processes ─────────────────────────────────────────────────
-        // Mirrors FocusedFieldCapture.blockedProcesses — keep in sync.
+        // Browsers are intentionally NOT blocked — capturing typing in browsers
+        // is a core product requirement. Only OS auth, credential, and password
+        // manager processes remain blocked to protect secrets.
         static readonly HashSet<string> BlockedProcesses = new HashSet<string>(StringComparer.OrdinalIgnoreCase) {
-            // Browsers — cannot distinguish private window/site at native layer
-            "chrome", "msedge", "firefox", "brave", "opera", "vivaldi", "chromium", "iexplore",
-            "tor", "waterfox", "floorp", "zen", "safari", "arc", "browser", "webview2", "msedgewebview2",
-            // OS auth, credential, and system processes
+            // OS authentication, credential, and system processes
             "credentialuibroker", "credentialui", "logonui", "consent", "lsass", "securityhealthsystray",
             "applicationframehost", "svchost", "systemsettings", "textinputhost", "explorer",
             "codex-computer-use", "taskmgr", "regedit",
@@ -95,50 +109,10 @@ namespace PromteSaver.WindowsPreview {
             "nordpass", "protonpass", "enpass", "roboform"
         };
 
-        // ── VK → char tables ─────────────────────────────────────────────────
-        // Printable characters for unshifted and shifted VK codes.
-        // Covers standard US QWERTY; non-Latin input goes through IME and won't
-        // map here (those users will still get UIA field snapshots as backup).
-        static readonly Dictionary<uint, char> UnshiftedMap = BuildUnshifted();
-        static readonly Dictionary<uint, char> ShiftedMap   = BuildShifted();
-
-        static Dictionary<uint, char> BuildUnshifted() {
-            var m = new Dictionary<uint, char>();
-            // A-Z (unshifted = lowercase)
-            for (uint k = 0x41; k <= 0x5A; k++) m[k] = (char)('a' + (k - 0x41));
-            // 0-9
-            for (uint k = 0x30; k <= 0x39; k++) m[k] = (char)('0' + (k - 0x30));
-            // Numpad 0-9
-            for (uint k = 0x60; k <= 0x69; k++) m[k] = (char)('0' + (k - 0x60));
-            // Punctuation and symbols (unshifted)
-            m[0xBD] = '-'; m[0xBB] = '='; m[0xDB] = '['; m[0xDD] = ']';
-            m[0xDC] = '\\'; m[0xBA] = ';'; m[0xDE] = '\''; m[0xBC] = ',';
-            m[0xBE] = '.'; m[0xBF] = '/'; m[0xC0] = '`';
-            m[VK_SPACE] = ' ';
-            // Numpad operators
-            m[0x6A] = '*'; m[0x6B] = '+'; m[0x6D] = '-'; m[0x6E] = '.'; m[0x6F] = '/';
-            return m;
-        }
-
-        static Dictionary<uint, char> BuildShifted() {
-            var m = new Dictionary<uint, char>();
-            // A-Z (shifted = uppercase)
-            for (uint k = 0x41; k <= 0x5A; k++) m[k] = (char)('A' + (k - 0x41));
-            // 0-9 shifted symbols
-            m[0x30] = ')'; m[0x31] = '!'; m[0x32] = '@'; m[0x33] = '#'; m[0x34] = '$';
-            m[0x35] = '%'; m[0x36] = '^'; m[0x37] = '&'; m[0x38] = '*'; m[0x39] = '(';
-            // Punctuation shifted
-            m[0xBD] = '_'; m[0xBB] = '+'; m[0xDB] = '{'; m[0xDD] = '}';
-            m[0xDC] = '|'; m[0xBA] = ':'; m[0xDE] = '"'; m[0xBC] = '<';
-            m[0xBE] = '>'; m[0xBF] = '?'; m[0xC0] = '~';
-            m[VK_SPACE] = ' ';
-            return m;
-        }
-
         // ── State ─────────────────────────────────────────────────────────────
-        const int MaxBufferChars   = 50000;
-        const int IdleFlushMs      = 2000;    // flush buffer after 2s of no typing in same app
-        const int MaxTrackedWindows = 32;     // bound the per-window buffer map
+        const int MaxBufferChars    = 50000;
+        const int IdleFlushMs       = 2000;    // flush buffer after 2s of no typing in same app
+        const int MaxTrackedWindows = 32;      // bound the per-window buffer map
 
         readonly LowLevelKeyboardProc hookProcDelegate; // keep alive to avoid GC
         readonly Action<KeystrokeChunk> onChunk;
@@ -151,6 +125,7 @@ namespace PromteSaver.WindowsPreview {
         bool disposed;
 
         // Per-window key buffer: windowHandle → WindowBuffer
+        // LRU order is maintained via a separate insertion-order list.
         sealed class WindowBuffer {
             internal string Source;
             internal readonly StringBuilder Buffer = new StringBuilder();
@@ -158,9 +133,17 @@ namespace PromteSaver.WindowsPreview {
         }
         readonly Dictionary<IntPtr, WindowBuffer> windowBuffers
             = new Dictionary<IntPtr, WindowBuffer>();
+        // LRU list — front = oldest, back = most recently used
+        readonly LinkedList<IntPtr> lruOrder = new LinkedList<IntPtr>();
+        readonly Dictionary<IntPtr, LinkedListNode<IntPtr>> lruNodes
+            = new Dictionary<IntPtr, LinkedListNode<IntPtr>>();
 
         IntPtr lastWindow = IntPtr.Zero;
         string lastSource = null;
+
+        // Reusable keyboard-state buffer for ToUnicodeEx
+        readonly byte[] keyboardState = new byte[256];
+        readonly StringBuilder unicodeBuffer = new StringBuilder(4);
 
         /// <param name="onChunk">Called on the UI thread when a text chunk is ready.</param>
         /// <param name="onGap">Called on the UI thread with a gap code (may be null).</param>
@@ -241,9 +224,33 @@ namespace PromteSaver.WindowsPreview {
             if (!windowBuffers.ContainsKey(window)) {
                 if (windowBuffers.Count >= MaxTrackedWindows) PruneOldestBuffer();
                 windowBuffers[window] = new WindowBuffer(source);
+                var node = lruOrder.AddLast(window);
+                lruNodes[window] = node;
+            } else {
+                // Move to back (most recently used)
+                if (lruNodes.ContainsKey(window)) {
+                    lruOrder.Remove(lruNodes[window]);
+                    lruNodes[window] = lruOrder.AddLast(window);
+                }
             }
 
             StringBuilder buf = windowBuffers[window].Buffer;
+
+            // ── Ctrl-held: suppress character reconstruction ──────────────────
+            // When Ctrl is held the key produces a control action (shortcut), not text.
+            // Ctrl+V (paste) is specially noted as a gap so downstream knows content
+            // arrived via paste rather than keystroke reconstruction.
+            if (IsCtrlHeld()) {
+                if (vk == VK_V) {
+                    // Paste: flush current buffer then emit a PASTE gap note so
+                    // the UIA snapshot engine's next read is treated as authoritative.
+                    FlushWindow(window, isEnter: false);
+                    if (onGap != null) onGap("PASTE_EVENT");
+                }
+                // All other Ctrl+ combos are shortcuts — no character appended.
+                idleTimer.Stop(); idleTimer.Start();
+                return;
+            }
 
             // ── Map key to character or control action ────────────────────────
             if (vk == VK_BACK) {
@@ -254,8 +261,7 @@ namespace PromteSaver.WindowsPreview {
             }
 
             if (vk == VK_DELETE) {
-                // Delete key — we can't know cursor position so just mark a gap in flow.
-                // Don't modify buffer; next UIA snapshot will correct it.
+                // Delete key — we can't know cursor position; UIA snapshot will correct.
                 idleTimer.Stop(); idleTimer.Start();
                 return;
             }
@@ -274,22 +280,18 @@ namespace PromteSaver.WindowsPreview {
                 return;
             }
 
-            // ── Map printable character ───────────────────────────────────────
-            bool shifted = IsShifted();
-            char ch;
-            if (shifted) {
-                if (!ShiftedMap.TryGetValue(vk, out ch)) return; // non-printable
-            } else {
-                if (!UnshiftedMap.TryGetValue(vk, out ch)) return; // non-printable
-                // Apply CapsLock to letters
-                if (ch >= 'a' && ch <= 'z' && IsCapsLockOn()) ch = (char)(ch - 32);
-            }
+            // ── Map printable character via ToUnicodeEx (layout-correct) ─────
+            char ch = VkToChar(vk, kbd.scanCode);
+            if (ch == '\0') return; // non-printable or dead key
 
             if (buf.Length >= MaxBufferChars) {
                 // Buffer full — emit what we have before adding more
                 FlushWindow(window, isEnter: false);
-                if (!windowBuffers.ContainsKey(window))
+                if (!windowBuffers.ContainsKey(window)) {
                     windowBuffers[window] = new WindowBuffer(source);
+                    var node = lruOrder.AddLast(window);
+                    lruNodes[window] = node;
+                }
                 buf = windowBuffers[window].Buffer;
             }
 
@@ -301,13 +303,26 @@ namespace PromteSaver.WindowsPreview {
 
         // ── Helpers ───────────────────────────────────────────────────────────
 
-        bool IsShifted() {
-            return (GetKeyState(VK_LSHIFT) & 0x8000) != 0 ||
-                   (GetKeyState(VK_RSHIFT) & 0x8000) != 0;
+        bool IsCtrlHeld() {
+            return (GetKeyState(VK_LCONTROL) & 0x8000) != 0 ||
+                   (GetKeyState(VK_RCONTROL) & 0x8000) != 0;
         }
 
-        bool IsCapsLockOn() {
-            return (GetKeyState(VK_CAPITAL) & 0x0001) != 0;
+        // Use ToUnicodeEx for layout-correct character mapping.
+        // Returns '\0' for non-printable keys, dead keys, or mapping failures.
+        char VkToChar(uint vk, uint scanCode) {
+            uint threadId = 0;
+            try {
+                IntPtr fg = GetForegroundWindow();
+                if (fg != IntPtr.Zero) GetWindowThreadProcessId(fg, out threadId);
+            } catch { }
+            IntPtr hkl = GetKeyboardLayout(threadId);
+            if (!GetKeyboardState(keyboardState)) return '\0';
+            unicodeBuffer.Clear();
+            int result = ToUnicodeEx(vk, scanCode, keyboardState, unicodeBuffer, unicodeBuffer.Capacity, 0, hkl);
+            if (result == 1) return unicodeBuffer[0];
+            if (result > 1) return unicodeBuffer[0]; // ligature: take first char
+            return '\0'; // dead key (result == -1) or no mapping (result == 0)
         }
 
         string GetProcessName(IntPtr window) {
@@ -335,8 +350,7 @@ namespace PromteSaver.WindowsPreview {
             string text = entry.Buffer.ToString();
             entry.Buffer.Clear();
             if (string.IsNullOrWhiteSpace(text)) return;
-            // Normalize: source already includes .exe suffix for non-.exe names;
-            // avoid double-appending if process name already ends in .exe
+            // Normalize: ensure .exe suffix
             string sourceName = src.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? src : src + ".exe";
             onChunk(new KeystrokeChunk(sourceName, text, isEnter));
         }
@@ -351,17 +365,28 @@ namespace PromteSaver.WindowsPreview {
         void OnIdleFlush(object sender, EventArgs e) {
             idleTimer.Stop();
             if (!enabled) return;
-            // Only flush the last active window on idle
-            if (lastWindow != IntPtr.Zero) FlushWindow(lastWindow, isEnter: false);
+            // Flush ALL buffered windows on idle — not just the last one — so no
+            // in-flight text is lost when the user switches apps before pressing Enter.
+            FlushAll(isIdle: true);
         }
 
         void PruneOldestBuffer() {
-            // Remove the window buffer with the fewest characters (likely stale)
-            IntPtr oldest = IntPtr.Zero; int min = int.MaxValue;
-            foreach (KeyValuePair<IntPtr, WindowBuffer> kv in windowBuffers) {
-                if (kv.Value.Buffer.Length < min) { min = kv.Value.Buffer.Length; oldest = kv.Key; }
+            // Remove the LRU (least recently used) window buffer.
+            if (lruOrder.Count == 0) return;
+            IntPtr oldest = lruOrder.First.Value;
+            lruOrder.RemoveFirst();
+            lruNodes.Remove(oldest);
+            WindowBuffer entry;
+            if (windowBuffers.TryGetValue(oldest, out entry)) {
+                // Flush any remaining text before evicting so it isn't lost
+                string text = entry.Buffer.ToString();
+                if (!string.IsNullOrWhiteSpace(text)) {
+                    string src = entry.Source.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+                        ? entry.Source : entry.Source + ".exe";
+                    onChunk(new KeystrokeChunk(src, text, isEnterFlush: false));
+                }
+                windowBuffers.Remove(oldest);
             }
-            if (oldest != IntPtr.Zero) windowBuffers.Remove(oldest);
         }
 
         public void Dispose() {

@@ -36,7 +36,7 @@ internal static class FieldPolicyHarness {
     Check(!FocusedFieldCapture.IsEditableValue(true, true, true, false), "read-only value excluded");
     Check(!FocusedFieldCapture.IsEditableValue(true, false, true, true), "read-only text excluded");
     Check(!FocusedFieldCapture.IsEditableValue(false, false, false, false), "unknown editability excluded");
-    Check(!FocusedFieldCapture.IsEligibleProcess("chrome"), "browser excluded");
+    Check(FocusedFieldCapture.IsEligibleProcess("chrome"), "browser included");
     Check(!FocusedFieldCapture.IsEligibleProcess("bitwarden"), "credential app excluded");
     Check(!FocusedFieldCapture.ShouldSave(null, ""), "empty excluded");
     Check(!FocusedFieldCapture.ShouldSave(null, "   "), "whitespace excluded");

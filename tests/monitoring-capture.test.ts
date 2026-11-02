@@ -149,7 +149,7 @@ test('monitoring evidence separates fields and copies, rejects bounded sources a
     assert.equal((await f.call(route + 'snapshot', 'POST', snapshot(session,fieldB,text))).status, 201);
     const changed = snapshot(session,fieldA,text + '\nA changed ending.');
     assert.equal((await f.call(route + 'snapshot', 'POST', changed)).status, 201);
-    for (const source of ['chrome.exe','bitwarden.exe','credentialuibroker.exe','msedgewebview2.exe',
+    for (const source of ['bitwarden.exe','credentialuibroker.exe','1password.exe',
       'SampleEditor.exe','../sampleeditor.exe','x'.repeat(65) + '.exe','']) {
       assert.equal((await f.call(route + 'snapshot', 'POST', {...snapshot(session),source})).status, 400, source);
     }

@@ -92,11 +92,11 @@ test('desktop field snapshots require a named approved app and stay unverified',
     assert.deepEqual((await call('/api/capture/status')).body.field.sources, []);
     assert.equal((await call('/api/capture/field/snapshot', 'POST', snapshot())).status, 409);
     assert.equal((await call('/api/capture/field/consent', 'POST',
-      {enabled: true, source: 'chrome.exe', consent: true})).status, 400);
+      {enabled: true, source: '1password.exe', consent: true})).status, 400);
     assert.equal((await call('/api/capture/field/consent', 'POST',
       {enabled: true, source: 'bitwarden.exe', consent: true})).status, 400);
     assert.equal((await call('/api/capture/field/consent', 'POST',
-      {enabled: true, source: 'msedgewebview2.exe', consent: true})).status, 400);
+      {enabled: true, source: 'keepass.exe', consent: true})).status, 400);
     assert.equal((await call('/api/capture/field/consent', 'POST',
       {enabled: true, source: 'credentialuibroker.exe', consent: true})).status, 400);
     assert.equal((await call('/api/capture/field/consent', 'POST',
@@ -107,7 +107,7 @@ test('desktop field snapshots require a named approved app and stay unverified',
       {enabled: true, source: 'sampleeditor.exe', consent: true})).status, 200);
     assert.deepEqual((await call('/api/capture/status')).body.field.sources, ['sampleeditor.exe']);
     assert.equal((await call('/api/capture/field/snapshot', 'POST', snapshot('othereditor.exe'))).status, 409);
-    assert.equal((await call('/api/capture/field/snapshot', 'POST', snapshot('chrome.exe'))).status, 400);
+    assert.equal((await call('/api/capture/field/snapshot', 'POST', snapshot('bitwarden.exe'))).status, 400);
     const first = snapshot();
     assert.equal((await call('/api/capture/field/snapshot', 'POST', first)).status, 201);
     assert.equal((await call('/api/capture/field/snapshot', 'POST', snapshot())).body.duplicate, true);

@@ -17,7 +17,7 @@ const shutdown=async(code=0)=>{
 process.stdout.on('error',()=>{void shutdown(1);});
 process.on('SIGINT',()=>void shutdown());process.on('SIGTERM',()=>void shutdown());
 try {
-  app=await startLocalWeb({directory,desktop:true});
+  app=await startLocalWeb({directory,desktop:true,monitoringLimitSaves:10_000,monitoringLimitBytes:20*1024*1024,monitoringRateLimit:30});
   if(process.stdin.destroyed || process.stdin.readableEnded){await shutdown();}
   else {
     send({type:'ready',version:1,url:app.url});

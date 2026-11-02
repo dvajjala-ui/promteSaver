@@ -379,9 +379,9 @@ namespace PromteSaver.WindowsPreview {
             permissionLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 88));
             permissionLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
             permissionLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
-            var permissionText = Label("Monitoring access for this unlocked session\nRecord saves changed text from supported editable desktop fields, including non-prompts. Normal fields may contain private text. Password/protected controls and known browsers are excluded. This is an in-app agreement, not a Windows permission granting access to every app. No web/file crawling, cloud upload or clipboard polling.", 10, FontStyle.Regular);
+            var permissionText = Label("Monitoring access for this unlocked session\nRecord captures typed keystrokes and editable field text across desktop applications and browsers. Password and protected credential controls remain excluded. Saved text is encrypted in your local vault. No cloud upload.", 10, FontStyle.Regular);
             permissionText.Dock = DockStyle.Fill; permissionLayout.Controls.Add(permissionText, 0, 0);
-            monitoringConsent.Text = "I allow local monitoring of supported editable text when I press Record.";
+            monitoringConsent.Text = "I allow local monitoring of typed text and editable fields when I press Record.";
             monitoringConsent.Dock = DockStyle.Fill; monitoringConsent.ForeColor = ForeColor;
             monitoringConsent.AccessibleName = monitoringConsent.Text;
             monitoringConsent.CheckedChanged += delegate { approve.Enabled = CanUseRecorder() && monitoringConsent.Checked && !monitoringApproved && !recordingBusy; };
@@ -420,7 +420,7 @@ namespace PromteSaver.WindowsPreview {
             var paging = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, Padding = new Padding(0, 4, 0, 0) };
             StyleButton(previous, "Previous", 100); previous.Click += async delegate { offset = Math.Max(0, offset - 10); await LoadPage(); }; paging.Controls.Add(previous);
             StyleButton(next, "Next", 100); next.Click += async delegate { offset += 10; await LoadPage(); }; paging.Controls.Add(next); pageInfo.Size = new Size(580, 35); pageInfo.Padding = new Padding(8); paging.Controls.Add(pageInfo); layout.Controls.Add(paging, 0, 5);
-            var boundaries = Label("Supported desktop fields only. Raw key history, copy-only capture and browser text are not available in this build.", 9, FontStyle.Regular); boundaries.Dock = DockStyle.Fill; boundaries.ForeColor = Color.FromArgb(150, 170, 184); layout.Controls.Add(boundaries, 0, 6);
+            var boundaries = Label("Live keystroke tracking and editable field capture across desktop apps and browsers. Password/credential fields excluded.", 9, FontStyle.Regular); boundaries.Dock = DockStyle.Fill; boundaries.ForeColor = Color.FromArgb(150, 170, 184); layout.Controls.Add(boundaries, 0, 6);
             workspace.Controls.Add(layout);
         }
 
@@ -581,7 +581,7 @@ namespace PromteSaver.WindowsPreview {
                     footer.Text = "The previous recorder may still be stopping. Wait a moment, then press Record again.";
                     return;
                 }
-                footer.Text = "Recording supported desktop field changes locally. Browsers and copy-only events are not covered.";
+                footer.Text = "Recording keystrokes and desktop/browser text locally into encrypted vault.";
             }, current);
             if (current == recordingEpoch) { recordingBusy = false; if (unlocked) await Execute(CaptureStatus, current); }
         }
