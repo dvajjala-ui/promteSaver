@@ -1,0 +1,3 @@
+# Build output (regenerate with build.cmd / build.ps1)
+TypingRecorder.exe
+*.pdb
