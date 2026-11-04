@@ -47,7 +47,11 @@ Consent → Record → capture typing + app + site → Markdown → review → S
 - **1.1 Coverage/diagnostics view** — live "capturing vs skipped (why)" per app,
   session counters, so cross-app testing produces real evidence. *(in progress)*
 - 1.2 First real-typing evidence across browsers, Teams, Claude Code, Codex, VS Code.
-- 1.3 Keystroke robustness: IME/CJK composition, dead keys, AltGr, fast typing.
+- 1.3 Keystroke robustness ✅ (mostly): AltGr characters, dead keys + ligatures
+  (all produced chars), fast typing (writes moved to a background queue off the
+  hook thread), and an IME safeguard (VK_PROCESSKEY → no wrong romaji). Full
+  IME/CJK *capture* is deferred to the Phase 2 field-value path. Needs real
+  AltGr/IME keyboards to fully confirm the reconstruction.
 - 1.4 Foreground edge cases: app-switch mid-type, lock screen, multi-monitor.
 - 1.5 Secret redaction before write ✅ (ported `packages/capture-core/redact.ts`
   → `src/Redaction.cs`; unit-tested, wired into the capture path).
@@ -96,4 +100,5 @@ Consent → Record → capture typing + app + site → Markdown → review → S
 ## Status log
 
 - **2026-11-04** — Phase 0 complete (base committed to `main`). Roadmap locked.
-  Phase 1.1 (coverage/diagnostics) and Phase 1.5 (secret redaction) landed.
+  Landed: Phase 1.1 (coverage/diagnostics), 1.5 (secret redaction), and most of
+  1.3 (AltGr, dead keys/ligatures, fast-typing write queue, IME safeguard).

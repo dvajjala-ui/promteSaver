@@ -87,6 +87,8 @@ namespace TypingRecorder {
         const int VK_DELETE    = 0x2E;
         const int VK_LCONTROL  = 0xA2;
         const int VK_RCONTROL  = 0xA3;
+        const int VK_MENU      = 0x12; // Alt (either side)
+        const int VK_PROCESSKEY= 0xE5; // key currently being processed by an IME
         const int VK_C         = 0x43; // Ctrl+C (copy)
         const int VK_V         = 0x56; // Ctrl+V (paste)
         const int VK_X         = 0x58; // Ctrl+X (cut)
@@ -211,8 +213,22 @@ namespace TypingRecorder {
 
             StringBuilder buf = windowBuffers[window].Buffer;
 
-            // -- Ctrl-held: clipboard actions and shortcuts --------------------
-            if (IsCtrlHeld()) {
+            // -- IME composition: this key is being consumed by an input method, so
+            //    the final (often CJK) text is produced elsewhere, not by this raw
+            //    key. Reconstructing it would record wrong (e.g. romaji) text. The
+            //    composed result is best captured by the field-value path (Phase 2).
+            if (vk == VK_PROCESSKEY) {
+                FlushWindow(window, false);
+                if (onGap != null) onGap("IME_COMPOSING");
+                idleTimer.Stop(); idleTimer.Start();
+                return;
+            }
+
+            // -- Ctrl-held shortcuts, but NOT AltGr (Ctrl+Alt), which produces real
+            //    text such as EUR or @ on many European layouts. When Alt is also
+            //    held we fall through so ToUnicodeEx reconstructs the AltGr char. --
+            bool altHeld = IsAltHeld();
+            if (IsCtrlHeld() && !altHeld) {
                 if (vk == VK_V) {
                     FlushWindow(window, false);
                     if (onGap != null) onGap("PASTE_EVENT");
@@ -249,8 +265,8 @@ namespace TypingRecorder {
                 return;
             }
 
-            char ch = VkToChar(vk, kbd.scanCode);
-            if (ch == '\0') return; // non-printable or dead key
+            string text = VkToText(vk, kbd.scanCode);
+            if (string.IsNullOrEmpty(text)) return; // non-printable, dead key, or no mapping
 
             if (buf.Length >= MaxBufferChars) {
                 FlushWindow(window, false);
@@ -261,7 +277,7 @@ namespace TypingRecorder {
                 buf = windowBuffers[window].Buffer;
             }
 
-            buf.Append(ch);
+            buf.Append(text);
             idleTimer.Stop(); idleTimer.Start();
         }
 
@@ -271,18 +287,26 @@ namespace TypingRecorder {
                    (GetKeyState(VK_RCONTROL) & 0x8000) != 0;
         }
 
-        char VkToChar(uint vk, uint scanCode) {
+        bool IsAltHeld() {
+            return (GetKeyState(VK_MENU) & 0x8000) != 0;
+        }
+
+        string VkToText(uint vk, uint scanCode) {
             uint threadId = 0;
             try {
                 IntPtr fg = GetForegroundWindow();
                 if (fg != IntPtr.Zero) GetWindowThreadProcessId(fg, out threadId);
             } catch { }
             IntPtr hkl = GetKeyboardLayout(threadId);
-            if (!GetKeyboardState(keyboardState)) return '\0';
+            if (!GetKeyboardState(keyboardState)) return null;
             unicodeBuffer.Length = 0;
             int result = ToUnicodeEx(vk, scanCode, keyboardState, unicodeBuffer, unicodeBuffer.Capacity, 0, hkl);
-            if (result >= 1) return unicodeBuffer[0];
-            return '\0'; // dead key (-1) or no mapping (0)
+            // result >= 1: one or more real characters (includes dead-key composition
+            // like ^ + e = e-circumflex, and ligatures). result == -1: a dead key
+            // held for the next keystroke. result == 0: no mapping. Append only
+            // genuinely produced characters, all of them.
+            if (result >= 1 && unicodeBuffer.Length > 0) return unicodeBuffer.ToString();
+            return null;
         }
 
         string GetProcessName(IntPtr window) {

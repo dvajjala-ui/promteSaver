@@ -122,6 +122,7 @@ namespace TypingRecorder {
     internal sealed class MainForm : Form {
         GlobalKeyboardCapture capture;
         ActiveContextMonitor monitor;
+        CaptureWriter writer;
         readonly System.Windows.Forms.Timer statusTimer;
 
         Label statusDot;
@@ -155,6 +156,7 @@ namespace TypingRecorder {
             ForeColor = Color.FromArgb(230, 234, 240);
 
             monitor = new ActiveContextMonitor(700);
+            writer = new CaptureWriter(OnWritten);
             capture = new GlobalKeyboardCapture(OnChunk, OnGap);
 
             BuildUi();
@@ -391,7 +393,9 @@ namespace TypingRecorder {
                 title = s.Title; // app switched mid-flush; keep title only
             }
             string via = chunk.IsEnterFlush ? "typed (enter)" : "typed";
-            Record(chunk.Source, title, host, path, via, chunk.Text);
+            // Hand off to the background writer so the hook thread never blocks on
+            // redaction or disk I/O (keeps fast typing from dropping keystrokes).
+            writer.Enqueue(new CaptureRecord(DateTime.Now, chunk.Source, title, host, path, via, chunk.Text));
         }
 
         void OnGap(string code) {
@@ -418,25 +422,24 @@ namespace TypingRecorder {
             string title = s != null ? s.Title : null;
             string host = s != null ? s.Host : null;
             string path = s != null ? s.Path : null;
-            Record(app, title, host, path, via, text);
+            writer.Enqueue(new CaptureRecord(DateTime.Now, app, title, host, path, via, text));
         }
 
-        void Record(string app, string title, string host, string path, string via, string text) {
-            // Mask obvious secrets (API keys, tokens, private keys, password=...) before
-            // anything is written to disk or shown in the live feed.
-            text = Redaction.Mask(text);
-            string summary = null;
-            try { summary = MarkdownStore.Append(DateTime.Now, app, title, host, path, via, text); }
-            catch (Exception e) { AppendLive("[write error] " + e.Message); return; }
-            if (summary != null) {
-                sessionChunks++;
-                sessionChars += (text != null ? text.Length : 0);
-                string key = app != null ? app : "unknown";
-                int cur; appCounts.TryGetValue(key, out cur);
-                appCounts[key] = cur + 1;
-                AppendLive(summary);
-                RefreshDiagnostics();
-            }
+        // Called on the writer's background thread after each successful write;
+        // marshal the live-feed + counter update back onto the UI thread.
+        void OnWritten(string summary, string app, int chars) {
+            if (IsDisposed) return;
+            try {
+                BeginInvoke((MethodInvoker)delegate {
+                    sessionChunks++;
+                    sessionChars += chars;
+                    string key = app != null ? app : "unknown";
+                    int cur; appCounts.TryGetValue(key, out cur);
+                    appCounts[key] = cur + 1;
+                    AppendLive(summary);
+                    RefreshDiagnostics();
+                });
+            } catch { }
         }
 
         // Whether keystrokes in the given foreground app would be captured, and why not.
@@ -549,7 +552,8 @@ namespace TypingRecorder {
 
         protected override void OnFormClosing(FormClosingEventArgs e) {
             statusTimer.Stop();
-            try { if (capture != null) capture.Dispose(); } catch { }
+            try { if (capture != null) capture.Dispose(); } catch { }   // stop new chunks first
+            try { if (writer != null) writer.Dispose(); } catch { }      // then flush the queue
             try { if (monitor != null) monitor.Dispose(); } catch { }
             base.OnFormClosing(e);
         }
