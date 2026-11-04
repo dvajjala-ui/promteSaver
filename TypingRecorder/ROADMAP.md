@@ -49,7 +49,8 @@ Consent → Record → capture typing + app + site → Markdown → review → S
 - 1.2 First real-typing evidence across browsers, Teams, Claude Code, Codex, VS Code.
 - 1.3 Keystroke robustness: IME/CJK composition, dead keys, AltGr, fast typing.
 - 1.4 Foreground edge cases: app-switch mid-type, lock screen, multi-monitor.
-- 1.5 Secret redaction before write (port `packages/capture-core/redact.ts`).
+- 1.5 Secret redaction before write ✅ (ported `packages/capture-core/redact.ts`
+  → `src/Redaction.cs`; unit-tested, wired into the capture path).
 - 1.6 Measured CPU/RAM over a long session; URL poller + writes never hitch typing.
 
 ### Phase 2 — "All text, any how"
@@ -94,5 +95,5 @@ Consent → Record → capture typing + app + site → Markdown → review → S
 
 ## Status log
 
-- **2026-11-04** — Phase 0 complete (base committed to `main`). Roadmap locked;
-  Phase 1.1 (coverage/diagnostics) started.
+- **2026-11-04** — Phase 0 complete (base committed to `main`). Roadmap locked.
+  Phase 1.1 (coverage/diagnostics) and Phase 1.5 (secret redaction) landed.

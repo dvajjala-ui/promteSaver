@@ -74,7 +74,7 @@ namespace TypingRecorder {
                 "   •  the application you were typing in (e.g. chrome.exe, Code.exe)\n" +
                 "   •  the window title, and\n" +
                 "   •  the active website host + path when that app is a browser.\n\n" +
-                "Copy, cut and paste text is recorded too. Everything is written to Markdown files on this PC only — there is no upload and no cloud. Password and Windows credential windows are skipped before any text is read, and URL query strings are dropped.\n\n" +
+                "Copy, cut and paste text is recorded too. Everything is written to Markdown files on this PC only — there is no upload and no cloud. Password and Windows credential windows are skipped before any text is read, URL query strings are dropped, and obvious secrets (API keys, tokens, passwords) are masked before saving.\n\n" +
                 "Recording never starts on its own: nothing is captured until you press Record, and Stop ends it at once.";
             body.SetBounds(24, 60, 512, 250);
             Controls.Add(body);
@@ -422,6 +422,9 @@ namespace TypingRecorder {
         }
 
         void Record(string app, string title, string host, string path, string via, string text) {
+            // Mask obvious secrets (API keys, tokens, private keys, password=...) before
+            // anything is written to disk or shown in the live feed.
+            text = Redaction.Mask(text);
             string summary = null;
             try { summary = MarkdownStore.Append(DateTime.Now, app, title, host, path, via, text); }
             catch (Exception e) { AppendLive("[write error] " + e.Message); return; }
