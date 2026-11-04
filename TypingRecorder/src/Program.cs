@@ -7,9 +7,11 @@
 // Everything is local. There is no network code in this app at all.
 // Password / credential windows are excluded before any text is read.
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 
@@ -131,6 +133,16 @@ namespace TypingRecorder {
         TextBox fileView;
         TabControl tabs;
 
+        // Diagnostics / coverage
+        Label diagLive;
+        TextBox diagBox;
+        readonly SortedDictionary<string, int> appCounts =
+            new SortedDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        readonly List<string> skipLog = new List<string>();
+        int sessionChunks;
+        long sessionChars;
+        string lastDiagKey;
+
         bool recording;
 
         internal MainForm() {
@@ -149,7 +161,7 @@ namespace TypingRecorder {
 
             statusTimer = new System.Windows.Forms.Timer();
             statusTimer.Interval = 500;
-            statusTimer.Tick += delegate { RefreshCurrentApp(); };
+            statusTimer.Tick += delegate { RefreshCurrentApp(); RefreshDiagnostics(); };
             statusTimer.Start();
 
             RefreshLibrary();
@@ -259,6 +271,35 @@ namespace TypingRecorder {
 
             tabs.TabPages.Add(libTab);
 
+            // ---- Diagnostics tab ----
+            var diagTab = new TabPage("Diagnostics");
+            diagTab.BackColor = Color.FromArgb(24, 26, 31);
+
+            diagBox = new TextBox();
+            diagBox.Multiline = true;
+            diagBox.ReadOnly = true;
+            diagBox.ScrollBars = ScrollBars.Vertical;
+            diagBox.WordWrap = false;
+            diagBox.Dock = DockStyle.Fill;
+            diagBox.BackColor = Color.FromArgb(18, 20, 24);
+            diagBox.ForeColor = Color.FromArgb(210, 220, 230);
+            diagBox.Font = new Font("Consolas", 9.5f);
+            diagBox.BorderStyle = BorderStyle.None;
+            diagTab.Controls.Add(diagBox);
+
+            diagLive = new Label();
+            diagLive.Dock = DockStyle.Top;
+            diagLive.Height = 54;
+            diagLive.TextAlign = ContentAlignment.MiddleLeft;
+            diagLive.Padding = new Padding(10, 0, 10, 0);
+            diagLive.Font = new Font("Segoe UI Semibold", 12f);
+            diagLive.BackColor = Color.FromArgb(30, 33, 40);
+            diagLive.ForeColor = Color.FromArgb(230, 234, 240);
+            diagLive.Text = "Not recording.";
+            diagTab.Controls.Add(diagLive);
+
+            tabs.TabPages.Add(diagTab);
+
             var footer = new Label();
             footer.Dock = DockStyle.Bottom;
             footer.Height = 26;
@@ -291,6 +332,8 @@ namespace TypingRecorder {
                 capture.Start();
                 monitor.Start();
                 recording = true;
+                appCounts.Clear(); skipLog.Clear();
+                sessionChunks = 0; sessionChars = 0; lastDiagKey = null;
                 AppendLive("--- recording started " + DateTime.Now.ToString("HH:mm:ss") + " ---");
             } catch (Exception e) {
                 MessageBox.Show("Could not start recording:\n\n" + e.Message, Program.AppName,
@@ -322,15 +365,19 @@ namespace TypingRecorder {
                 recordButton.Text = "●  Record";
                 recordButton.BackColor = Color.FromArgb(46, 120, 210);
             }
+            RefreshDiagnostics();
         }
 
         void RefreshCurrentApp() {
             if (!recording) return;
             ContextSnapshot s = monitor.Current;
             if (s == null || s.Process == null) { currentApp.Text = "Watching…"; return; }
-            string t = "Typing in: " + s.Process;
-            if (!string.IsNullOrEmpty(s.Host)) t += "  ·  " + s.Host + (s.Path == null ? "" : s.Path);
-            currentApp.Text = t;
+            string reason;
+            bool cap = WillCapture(s.Process, out reason);
+            string site = !string.IsNullOrEmpty(s.Host) ? "  ·  " + s.Host + (s.Path == null ? "" : s.Path) : "";
+            currentApp.Text = cap
+                ? "Capturing: " + s.Process + site
+                : "Skipped: " + s.Process + "  —  " + reason;
         }
 
         // -- Capture callbacks (run on the UI thread) ----------------------
@@ -378,7 +425,81 @@ namespace TypingRecorder {
             string summary = null;
             try { summary = MarkdownStore.Append(DateTime.Now, app, title, host, path, via, text); }
             catch (Exception e) { AppendLive("[write error] " + e.Message); return; }
-            if (summary != null) AppendLive(summary);
+            if (summary != null) {
+                sessionChunks++;
+                sessionChars += (text != null ? text.Length : 0);
+                string key = app != null ? app : "unknown";
+                int cur; appCounts.TryGetValue(key, out cur);
+                appCounts[key] = cur + 1;
+                AppendLive(summary);
+                RefreshDiagnostics();
+            }
+        }
+
+        // Whether keystrokes in the given foreground app would be captured, and why not.
+        bool WillCapture(string app, out string reason) {
+            reason = "";
+            if (string.IsNullOrEmpty(app)) { reason = "no foreground app"; return false; }
+            string name = app;
+            if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                name = name.Substring(0, name.Length - 4);
+            if (string.Equals(name, "TypingRecorder", StringComparison.OrdinalIgnoreCase)) {
+                reason = "this recorder window"; return false;
+            }
+            if (GlobalKeyboardCapture.IsBlockedProcess(app)) {
+                reason = "system / credential window"; return false;
+            }
+            return true;
+        }
+
+        void RefreshDiagnostics() {
+            if (diagLive == null || diagBox == null) return;
+
+            if (!recording) {
+                diagLive.ForeColor = Color.FromArgb(150, 160, 175);
+                diagLive.Text = "Not recording.";
+            } else {
+                ContextSnapshot s = monitor.Current;
+                string app = (s != null) ? s.Process : null;
+                if (app == null) {
+                    diagLive.ForeColor = Color.FromArgb(150, 160, 175);
+                    diagLive.Text = "Watching… (no foreground app yet)";
+                } else {
+                    string reason;
+                    bool cap = WillCapture(app, out reason);
+                    string site = (s.Host != null) ? "  ·  " + s.Host + (s.Path == null ? "" : s.Path) : "";
+                    if (cap) {
+                        diagLive.ForeColor = Color.FromArgb(120, 210, 140);
+                        diagLive.Text = "● Capturing: " + app + site;
+                    } else {
+                        diagLive.ForeColor = Color.FromArgb(235, 180, 90);
+                        diagLive.Text = "✕ Skipped: " + app + "  —  " + reason;
+                    }
+                    string key = (cap ? "C:" : "S:") + app;
+                    if (!cap && key != lastDiagKey) {
+                        skipLog.Add(DateTime.Now.ToString("HH:mm:ss") + "  " + app + " — " + reason);
+                        if (skipLog.Count > 60) skipLog.RemoveAt(0);
+                    }
+                    lastDiagKey = key;
+                }
+            }
+
+            var sb = new StringBuilder();
+            sb.AppendLine("SESSION COVERAGE");
+            sb.AppendLine("  blocks saved : " + sessionChunks);
+            sb.AppendLine("  chars saved  : " + sessionChars);
+            sb.AppendLine("  apps captured: " + appCounts.Count);
+            sb.AppendLine();
+            sb.AppendLine("BY APP");
+            if (appCounts.Count == 0) sb.AppendLine("  (nothing captured yet)");
+            foreach (var kv in appCounts) sb.AppendLine("  " + kv.Key.PadRight(24) + kv.Value);
+            sb.AppendLine();
+            sb.AppendLine("RECENT SKIPS  (password and system windows are never recorded)");
+            if (skipLog.Count == 0) sb.AppendLine("  (none)");
+            for (int i = skipLog.Count - 1; i >= 0 && i >= skipLog.Count - 15; i--)
+                sb.AppendLine("  " + skipLog[i]);
+
+            diagBox.Text = sb.ToString();
         }
 
         // -- Live feed + library -------------------------------------------

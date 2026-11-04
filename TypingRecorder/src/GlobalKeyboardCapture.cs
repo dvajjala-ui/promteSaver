@@ -302,6 +302,18 @@ namespace TypingRecorder {
             return BlockedProcesses.Contains(processName);
         }
 
+        /// <summary>
+        /// True if a process (with or without a .exe suffix) is on the always-excluded
+        /// list. Used by the UI's coverage view to explain why an app is skipped.
+        /// </summary>
+        internal static bool IsBlockedProcess(string processName) {
+            if (string.IsNullOrEmpty(processName)) return true;
+            string name = processName;
+            if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                name = name.Substring(0, name.Length - 4);
+            return BlockedProcesses.Contains(name);
+        }
+
         void FlushWindow(IntPtr window, bool isEnter) {
             WindowBuffer entry;
             if (!windowBuffers.TryGetValue(window, out entry)) return;
