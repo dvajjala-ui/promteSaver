@@ -26,13 +26,13 @@ namespace TypingRecorder {
         readonly Queue<CaptureRecord> queue = new Queue<CaptureRecord>();
         readonly object gate = new object();
         readonly AutoResetEvent signal = new AutoResetEvent(false);
-        readonly Action<string, string, int> onWritten; // summary, app, masked-char-count
+        readonly Action<string, string, int, DateTime> onWritten; // summary, app, masked-char-count, when
         Thread worker;
         volatile bool running;
 
         /// <param name="onWritten">Called (on the writer thread) after each successful
         /// write with the live-feed summary, the app name, and the masked char count.</param>
-        internal CaptureWriter(Action<string, string, int> onWritten) {
+        internal CaptureWriter(Action<string, string, int, DateTime> onWritten) {
             this.onWritten = onWritten;
             running = true;
             worker = new Thread(Loop);
@@ -66,7 +66,7 @@ namespace TypingRecorder {
                     string text = Redaction.Mask(r.Text);
                     string summary = MarkdownStore.Append(r.When, r.App, r.Title, r.Host, r.Path, r.Via, text);
                     if (summary != null && onWritten != null)
-                        onWritten(summary, r.App, text != null ? text.Length : 0);
+                        onWritten(summary, r.App, text != null ? text.Length : 0, r.When);
                 } catch {
                     // A single bad write must never kill the writer thread.
                 }

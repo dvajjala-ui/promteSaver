@@ -110,3 +110,15 @@ Consent → Record → capture typing + app + site → Markdown → review → S
   the field worker on spawn. Verified end-to-end at the process level — the
   `--field-worker` child spawns on Record and exits on Stop, no crash. Capturing
   actual field/clipboard *content* still needs physical typing to confirm.
+- **2026-11-05 (cont.)** — **Phase 3 wired**: the Library tab is now the real
+  searchable `LibraryPanel` over a background `CaptureIndex` (search, filter/group
+  by app/site/day, AI-prompt tagging, copy/open/pin/delete-with-undo, virtualized
+  list); new captures update the index live via `NotifyWrite`. **Phase 4 wired**:
+  `SingleInstanceGuard` (2nd launch exits), system-tray residency with
+  Record/Stop/Exclusions/Start-with-Windows/Quit, **Close-to-tray** (X hides,
+  keeps recording), `--autostart` hidden start, consent deferred under autostart,
+  user app/site **exclusions** enforced at every capture feed, and auto-stop on
+  lock/sign-out. Verified: builds clean (132 KB); main window + library construct;
+  field worker spawns on Record (harness-confirmed); close-to-tray, single-instance
+  and autostart-hidden all behave correctly. Content capture, exclusion drops,
+  search results and the lock auto-stop still need physical use to confirm.

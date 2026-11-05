@@ -14,6 +14,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
+using Microsoft.Win32;
 
 namespace TypingRecorder {
 
@@ -28,25 +29,31 @@ namespace TypingRecorder {
             if (args != null && args.Length == 1 && args[0] == "--field-worker")
                 return FieldWorkerHost.Run();
 
-            bool createdNew;
-            using (var mutex = new Mutex(true, "TypingRecorder.SingleInstance.v1", out createdNew)) {
-                if (!createdNew) {
-                    MessageBox.Show("TypingRecorder is already running.", AppName,
-                        MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    return 0;
-                }
+            // Launched by the Start-with-Windows entry: come up hidden in the tray,
+            // not recording, and defer consent to the first open / Record.
+            bool autostart = args != null && Array.IndexOf(args, "--autostart") >= 0;
 
-                Application.EnableVisualStyles();
-                Application.SetCompatibleTextRenderingDefault(false);
-
-                // Explicit monitoring consent every time the app opens.
-                using (var consent = new ConsentForm()) {
-                    if (consent.ShowDialog() != DialogResult.OK) return 0;
-                }
-
-                try { MarkdownStore.EnsureDirs(); } catch { }
-                Application.Run(new MainForm());
+            SingleInstanceGuard guard;
+            if (!SingleInstanceGuard.TryAcquire(out guard)) {
+                guard.SignalExisting();   // poke the running instance to come forward
+                guard.Dispose();
+                return 0;
             }
+
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+
+            bool consented = false;
+            if (!autostart) {
+                // Explicit monitoring consent when the user opens the app themselves.
+                using (var consent = new ConsentForm()) {
+                    if (consent.ShowDialog() != DialogResult.OK) { guard.Dispose(); return 0; }
+                }
+                consented = true;
+            }
+
+            try { MarkdownStore.EnsureDirs(); } catch { }
+            Application.Run(new MainForm(guard, autostart, consented));
             return 0;
         }
     }
@@ -144,8 +151,8 @@ namespace TypingRecorder {
         Label currentApp;
         Button recordButton;
         TextBox liveBox;
-        ListBox fileList;
-        TextBox fileView;
+        CaptureIndex captureIndex;
+        LibraryPanel libraryPanel;
         TabControl tabs;
 
         // Diagnostics / coverage
@@ -160,7 +167,19 @@ namespace TypingRecorder {
 
         bool recording;
 
-        internal MainForm() {
+        // Phase 4 lifecycle (tray residency, single instance, user exclusions)
+        SingleInstanceGuard guard;
+        TrayController tray;
+        ExclusionStore exclusions;
+        bool consented;
+        readonly bool startHidden;
+        bool shownOnce;
+        bool quitting;
+
+        internal MainForm(SingleInstanceGuard guard, bool startHidden, bool consented) {
+            this.guard = guard;
+            this.startHidden = startHidden;
+            this.consented = consented;
             Text = Program.AppName;
             StartPosition = FormStartPosition.CenterScreen;
             ClientSize = new Size(960, 620);
@@ -169,11 +188,16 @@ namespace TypingRecorder {
             Font = new Font("Segoe UI", 9.75f);
             ForeColor = Color.FromArgb(230, 234, 240);
 
+            exclusions = new ExclusionStore();
             monitor = new ActiveContextMonitor(700);
             writer = new CaptureWriter(OnWritten);
             reconciler = new CaptureReconciler(writer.Enqueue);      // finalized sessions -> writer
             clipboard = new ClipboardWatch(OnClipboardChanged);
             fieldClient = new FieldSnapshotClient(this, OnFieldSnapshot, OnFieldGap);
+            string indexDir = System.IO.Path.Combine(MarkdownStore.DataRoot, "index");
+            try { System.IO.Directory.CreateDirectory(indexDir); } catch { }
+            captureIndex = new CaptureIndex(MarkdownStore.CaptureDir, indexDir);
+            libraryPanel = new LibraryPanel(captureIndex);
             capture = new GlobalKeyboardCapture(OnChunk, OnGap);
 
             BuildUi();
@@ -186,10 +210,30 @@ namespace TypingRecorder {
                     if (pendingClipOp != null && DateTime.Now > pendingClipExpiry) pendingClipOp = null;
                 }
                 RefreshCurrentApp(); RefreshDiagnostics();
+                if (tray != null) {
+                    ContextSnapshot cs = monitor.Current;
+                    string ctx = (recording && cs != null && cs.Process != null)
+                        ? cs.Process + (string.IsNullOrEmpty(cs.Host) ? "" : " · " + cs.Host) : null;
+                    tray.SetContext(ctx);
+                }
             };
             statusTimer.Start();
 
-            RefreshLibrary();
+            captureIndex.BeginBuild();   // start the background library index build
+
+            tray = new TrayController(ShowFromTray, ToggleRecording, ShowExclusions,
+                                      ToggleStartup, new Func<bool>(StartupManager.IsEnabled), QuitApp);
+            if (guard != null) {
+                guard.ActivateRequested += delegate {
+                    try { BeginInvoke((MethodInvoker)ShowFromTray); } catch { }
+                };
+            }
+            try { SystemEvents.SessionSwitch += OnSessionSwitch; } catch { }
+
+            // Realize the window handle now so background callbacks (writer, field
+            // worker, activate) can BeginInvoke even when we start hidden in the tray.
+            try { if (!IsHandleCreated) { IntPtr h = Handle; } } catch { }
+
             UpdateStatus();
         }
 
@@ -241,7 +285,7 @@ namespace TypingRecorder {
             actions.Controls.Add(openFolder);
 
             var refresh = MakeFlat("Refresh library", 160);
-            refresh.Click += delegate { RefreshLibrary(); };
+            refresh.Click += delegate { captureIndex.BeginBuild(); };
             actions.Controls.Add(refresh);
 
             // Tabs
@@ -267,33 +311,8 @@ namespace TypingRecorder {
 
             var libTab = new TabPage("Library");
             libTab.BackColor = Color.FromArgb(24, 26, 31);
-            var split = new SplitContainer();
-            split.Dock = DockStyle.Fill;
-            split.SplitterDistance = 240;
-            split.BackColor = Color.FromArgb(24, 26, 31);
-            libTab.Controls.Add(split);
-
-            fileList = new ListBox();
-            fileList.Dock = DockStyle.Fill;
-            fileList.BackColor = Color.FromArgb(18, 20, 24);
-            fileList.ForeColor = Color.FromArgb(210, 220, 230);
-            fileList.BorderStyle = BorderStyle.None;
-            fileList.IntegralHeight = false;
-            fileList.SelectedIndexChanged += delegate { ShowSelectedFile(); };
-            split.Panel1.Controls.Add(fileList);
-
-            fileView = new TextBox();
-            fileView.Multiline = true;
-            fileView.ReadOnly = true;
-            fileView.ScrollBars = ScrollBars.Both;
-            fileView.WordWrap = false;
-            fileView.Dock = DockStyle.Fill;
-            fileView.BackColor = Color.FromArgb(18, 20, 24);
-            fileView.ForeColor = Color.FromArgb(210, 220, 230);
-            fileView.Font = new Font("Consolas", 9.5f);
-            fileView.BorderStyle = BorderStyle.None;
-            split.Panel2.Controls.Add(fileView);
-
+            libraryPanel.Dock = DockStyle.Fill;
+            libTab.Controls.Add(libraryPanel);
             tabs.TabPages.Add(libTab);
 
             // ---- Diagnostics tab ----
@@ -348,8 +367,9 @@ namespace TypingRecorder {
 
         // -- Recording ------------------------------------------------------
         void ToggleRecording() {
-            if (recording) StopRecording();
-            else StartRecording();
+            if (recording) { StopRecording(); return; }
+            if (!EnsureConsented()) return;   // autostart defers consent to the first Record
+            StartRecording();
         }
 
         void StartRecording() {
@@ -381,7 +401,7 @@ namespace TypingRecorder {
             recording = false;
             AppendLive("--- recording stopped " + DateTime.Now.ToString("HH:mm:ss") + " ---");
             UpdateStatus();
-            RefreshLibrary();
+            captureIndex.RefreshToday();   // reflect the just-finalized session
         }
 
         void UpdateStatus() {
@@ -397,6 +417,7 @@ namespace TypingRecorder {
                 recordButton.Text = "●  Record";
                 recordButton.BackColor = Color.FromArgb(46, 120, 210);
             }
+            if (tray != null) tray.SetRecording(recording);
             RefreshDiagnostics();
         }
 
@@ -416,6 +437,8 @@ namespace TypingRecorder {
         void OnChunk(KeystrokeChunk chunk) {
             if (chunk == null) return;
             ContextSnapshot s = monitor.Current;
+            // User exclusions: drop before anything is grouped or written.
+            if (exclusions.IsAppExcluded(chunk.Source) || exclusions.IsSiteExcluded(s != null ? s.Host : null)) return;
             string title = null, host = null, path = null;
             if (s != null && string.Equals(s.Process, chunk.Source, StringComparison.OrdinalIgnoreCase)) {
                 title = s.Title; host = s.Host; path = s.Path;
@@ -447,6 +470,7 @@ namespace TypingRecorder {
             if (code == "PASTE_EVENT") {
                 // Paste reads (does not write) the clipboard, so grab it now; the
                 // reconciler holds it briefly to fold into a field snapshot.
+                if (ClipboardContextExcluded()) return;
                 string text = ReadClipboardText();
                 if (!string.IsNullOrEmpty(text))
                     reconciler.FeedClipboard(DateTime.Now, "PASTE", text, monitor.Current);
@@ -468,6 +492,7 @@ namespace TypingRecorder {
             if (clipboard.SequenceNumber <= pendingClipBaseline) return; // not genuinely advanced
             string op = pendingClipOp;
             pendingClipOp = null;
+            if (ClipboardContextExcluded()) return;
             string text = ReadClipboardText();
             if (!string.IsNullOrEmpty(text))
                 reconciler.FeedClipboard(DateTime.Now, op, text, monitor.Current);
@@ -478,9 +503,16 @@ namespace TypingRecorder {
             return null;
         }
 
+        bool ClipboardContextExcluded() {
+            ContextSnapshot s = monitor.Current;
+            return s != null && (exclusions.IsAppExcluded(s.Process) || exclusions.IsSiteExcluded(s.Host));
+        }
+
         // Field worker callbacks (marshaled to the UI thread by FieldSnapshotClient).
         void OnFieldSnapshot(string source, string text, string fieldId) {
-            reconciler.FeedFieldSnapshot(DateTime.Now, source, text, fieldId, monitor.Current);
+            ContextSnapshot s = monitor.Current;
+            if (exclusions.IsAppExcluded(source) || (s != null && exclusions.IsSiteExcluded(s.Host))) return;
+            reconciler.FeedFieldSnapshot(DateTime.Now, source, text, fieldId, s);
         }
 
         void OnFieldGap(string code) {
@@ -491,7 +523,8 @@ namespace TypingRecorder {
 
         // Called on the writer's background thread after each successful write;
         // marshal the live-feed + counter update back onto the UI thread.
-        void OnWritten(string summary, string app, int chars) {
+        void OnWritten(string summary, string app, int chars, DateTime when) {
+            try { captureIndex.NotifyWrite(when); } catch { }   // update the library index (any thread)
             if (IsDisposed) return;
             try {
                 BeginInvoke((MethodInvoker)delegate {
@@ -581,29 +614,6 @@ namespace TypingRecorder {
             liveBox.AppendText(line + "\r\n");
         }
 
-        void RefreshLibrary() {
-            if (fileList == null) return;
-            object keep = fileList.SelectedItem;
-            fileList.BeginUpdate();
-            fileList.Items.Clear();
-            foreach (var f in MarkdownStore.ListFiles()) fileList.Items.Add(f);
-            fileList.EndUpdate();
-            if (keep != null) {
-                for (int i = 0; i < fileList.Items.Count; i++)
-                    if (fileList.Items[i].ToString() == keep.ToString()) { fileList.SelectedIndex = i; break; }
-            } else if (fileList.Items.Count > 0) {
-                fileList.SelectedIndex = 0;
-            }
-        }
-
-        void ShowSelectedFile() {
-            var f = fileList.SelectedItem as CaptureFile;
-            if (f == null) { fileView.Text = ""; return; }
-            fileView.Text = MarkdownStore.Read(f.Path).Replace("\n", "\r\n");
-            fileView.SelectionStart = 0;
-            fileView.ScrollToCaret();
-        }
-
         void OpenDataFolder() {
             try {
                 MarkdownStore.EnsureDirs();
@@ -614,14 +624,82 @@ namespace TypingRecorder {
             }
         }
 
+        // -- Tray / lifecycle ----------------------------------------------
+        protected override void SetVisibleCore(bool value) {
+            // Autostart stays hidden on the first show (tray only); the handle is
+            // already realized so background BeginInvoke calls still work.
+            if (startHidden && !shownOnce && value) { base.SetVisibleCore(false); return; }
+            base.SetVisibleCore(value);
+        }
+
+        void ShowFromTray() {
+            shownOnce = true;
+            try {
+                if (!Visible) Show();
+                if (WindowState == FormWindowState.Minimized) WindowState = FormWindowState.Normal;
+                Activate();
+                BringToFront();
+            } catch { }
+        }
+
+        void QuitApp() { quitting = true; Close(); }
+
+        bool EnsureConsented() {
+            if (consented) return true;
+            using (var c = new ConsentForm()) {
+                IWin32Window owner = (IsHandleCreated && Visible) ? this : null;
+                if (c.ShowDialog(owner) == DialogResult.OK) { consented = true; return true; }
+            }
+            return false;
+        }
+
+        void ShowExclusions() {
+            ContextSnapshot s = monitor.Current;
+            string app = s != null ? s.Process : null;
+            string host = s != null ? s.Host : null;
+            using (var f = new ExclusionsForm(exclusions, app, host)) {
+                IWin32Window owner = (IsHandleCreated && Visible) ? this : null;
+                f.ShowDialog(owner);
+            }
+        }
+
+        void ToggleStartup() {
+            try { StartupManager.SetEnabled(!StartupManager.IsEnabled()); }
+            catch (Exception e) {
+                MessageBox.Show("Could not change the Start-with-Windows setting:\n\n" + e.Message,
+                    Program.AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        void OnSessionSwitch(object sender, SessionSwitchEventArgs e) {
+            // Privacy: stop recording when the desktop locks or the user signs out.
+            if (e.Reason == SessionSwitchReason.SessionLock || e.Reason == SessionSwitchReason.SessionLogoff) {
+                try { BeginInvoke((MethodInvoker)delegate { if (recording) StopRecording(); }); } catch { }
+            }
+        }
+
         protected override void OnFormClosing(FormClosingEventArgs e) {
+            // Closing the window (X) hides to the tray and keeps recording; only a
+            // real Quit (tray menu) or a Windows shutdown tears the app down.
+            if (!quitting && e.CloseReason == CloseReason.UserClosing) {
+                e.Cancel = true;
+                shownOnce = true;
+                Hide();
+                if (tray != null) tray.ShowFirstMinimizeHint();
+                return;
+            }
+
             statusTimer.Stop();
+            try { SystemEvents.SessionSwitch -= OnSessionSwitch; } catch { }
             try { if (capture != null) capture.Dispose(); } catch { }        // stop new chunks first
             try { if (fieldClient != null) fieldClient.Dispose(); } catch { } // stop the field worker
             try { if (clipboard != null) clipboard.Dispose(); } catch { }     // stop the clipboard listener
             try { if (reconciler != null) reconciler.FlushAll(); } catch { }  // commit any open session
             try { if (writer != null) writer.Dispose(); } catch { }           // then flush the queue
+            try { if (captureIndex != null) captureIndex.Dispose(); } catch { } // persist overlay + stop timers
             try { if (monitor != null) monitor.Dispose(); } catch { }
+            try { if (tray != null) tray.Dispose(); } catch { }
+            try { if (guard != null) guard.Dispose(); } catch { }
             base.OnFormClosing(e);
         }
     }
