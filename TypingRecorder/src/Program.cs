@@ -21,13 +21,19 @@ namespace TypingRecorder {
         internal const string AppName = "TypingRecorder";
 
         [STAThread]
-        static void Main() {
+        static int Main(string[] args) {
+            // Hidden field-capture worker: this same exe re-launched with one flag.
+            // It runs all UI Automation in its own process and streams field
+            // snapshots to the parent over stdio (FieldSnapshotClient / FieldWorkerHost).
+            if (args != null && args.Length == 1 && args[0] == "--field-worker")
+                return FieldWorkerHost.Run();
+
             bool createdNew;
             using (var mutex = new Mutex(true, "TypingRecorder.SingleInstance.v1", out createdNew)) {
                 if (!createdNew) {
                     MessageBox.Show("TypingRecorder is already running.", AppName,
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    return;
+                    return 0;
                 }
 
                 Application.EnableVisualStyles();
@@ -35,12 +41,13 @@ namespace TypingRecorder {
 
                 // Explicit monitoring consent every time the app opens.
                 using (var consent = new ConsentForm()) {
-                    if (consent.ShowDialog() != DialogResult.OK) return;
+                    if (consent.ShowDialog() != DialogResult.OK) return 0;
                 }
 
                 try { MarkdownStore.EnsureDirs(); } catch { }
                 Application.Run(new MainForm());
             }
+            return 0;
         }
     }
 
@@ -123,6 +130,13 @@ namespace TypingRecorder {
         GlobalKeyboardCapture capture;
         ActiveContextMonitor monitor;
         CaptureWriter writer;
+        CaptureReconciler reconciler;
+        FieldSnapshotClient fieldClient;
+        ClipboardWatch clipboard;
+        // Correlates a Ctrl+C / Ctrl+X with the next verified clipboard change.
+        string pendingClipOp;
+        long pendingClipBaseline;
+        DateTime pendingClipExpiry;
         readonly System.Windows.Forms.Timer statusTimer;
 
         Label statusDot;
@@ -157,13 +171,22 @@ namespace TypingRecorder {
 
             monitor = new ActiveContextMonitor(700);
             writer = new CaptureWriter(OnWritten);
+            reconciler = new CaptureReconciler(writer.Enqueue);      // finalized sessions -> writer
+            clipboard = new ClipboardWatch(OnClipboardChanged);
+            fieldClient = new FieldSnapshotClient(this, OnFieldSnapshot, OnFieldGap);
             capture = new GlobalKeyboardCapture(OnChunk, OnGap);
 
             BuildUi();
 
             statusTimer = new System.Windows.Forms.Timer();
             statusTimer.Interval = 500;
-            statusTimer.Tick += delegate { RefreshCurrentApp(); RefreshDiagnostics(); };
+            statusTimer.Tick += delegate {
+                if (recording) {
+                    reconciler.Tick(DateTime.Now);   // idle finalize + paste-window deadline
+                    if (pendingClipOp != null && DateTime.Now > pendingClipExpiry) pendingClipOp = null;
+                }
+                RefreshCurrentApp(); RefreshDiagnostics();
+            };
             statusTimer.Start();
 
             RefreshLibrary();
@@ -333,6 +356,9 @@ namespace TypingRecorder {
             try {
                 capture.Start();
                 monitor.Start();
+                clipboard.Start();
+                fieldClient.Start();   // worker-spawn failure is reported via OnFieldGap, never thrown
+                pendingClipOp = null;
                 recording = true;
                 appCounts.Clear(); skipLog.Clear();
                 sessionChunks = 0; sessionChars = 0; lastDiagKey = null;
@@ -347,7 +373,11 @@ namespace TypingRecorder {
 
         void StopRecording() {
             try { capture.Stop(); } catch { }
+            try { fieldClient.Stop(); } catch { }
+            try { clipboard.Stop(); } catch { }
+            try { reconciler.FlushAll(); } catch { }   // commit any open session
             try { monitor.Stop(); } catch { }
+            pendingClipOp = null;
             recording = false;
             AppendLive("--- recording stopped " + DateTime.Now.ToString("HH:mm:ss") + " ---");
             UpdateStatus();
@@ -392,37 +422,71 @@ namespace TypingRecorder {
             } else if (s != null) {
                 title = s.Title; // app switched mid-flush; keep title only
             }
-            string via = chunk.IsEnterFlush ? "typed (enter)" : "typed";
-            // Hand off to the background writer so the hook thread never blocks on
-            // redaction or disk I/O (keeps fast typing from dropping keystrokes).
-            writer.Enqueue(new CaptureRecord(DateTime.Now, chunk.Source, title, host, path, via, chunk.Text));
+            // Feed the reconciler: it groups a typing session and supersedes it with
+            // a field snapshot / folds pastes before committing one entry via the
+            // background writer (redaction + disk I/O stay off the hook thread).
+            reconciler.FeedKeystroke(DateTime.Now, chunk.Source, title, host, path, chunk.Text, chunk.IsEnterFlush);
         }
 
         void OnGap(string code) {
-            // Clipboard must be read on the STA UI thread; marshal onto it.
+            // Runs on the hook thread; marshal onto the STA UI thread for clipboard
+            // access and reconciler calls.
             if (IsDisposed) return;
             try {
-                BeginInvoke((MethodInvoker)delegate { HandleClipboard(code); });
+                BeginInvoke((MethodInvoker)delegate { HandleGap(code); });
             } catch { }
         }
 
-        void HandleClipboard(string code) {
-            string via;
-            if (code == "PASTE_EVENT") via = "paste";
-            else if (code == "CUT_EVENT") via = "cut";
-            else if (code == "COPY_EVENT") via = "copy";
-            else return;
+        void HandleGap(string code) {
+            if (code == "IME_COMPOSING") {
+                // The field-value path will capture the composed text; tell the
+                // reconciler to prefer it for this session.
+                reconciler.NoteIme();
+                return;
+            }
+            if (code == "PASTE_EVENT") {
+                // Paste reads (does not write) the clipboard, so grab it now; the
+                // reconciler holds it briefly to fold into a field snapshot.
+                string text = ReadClipboardText();
+                if (!string.IsNullOrEmpty(text))
+                    reconciler.FeedClipboard(DateTime.Now, "PASTE", text, monitor.Current);
+                return;
+            }
+            if (code == "COPY_EVENT" || code == "CUT_EVENT") {
+                // Copy/cut write the clipboard asynchronously: take a sequence-number
+                // baseline now and record only when the next change confirms it
+                // advanced (so Ctrl+C with nothing selected records nothing).
+                pendingClipOp = (code == "CUT_EVENT") ? "CUT" : "COPY";
+                pendingClipBaseline = clipboard.SequenceNumber;
+                pendingClipExpiry = DateTime.Now.AddMilliseconds(700);
+            }
+        }
 
-            string text = null;
-            try { if (Clipboard.ContainsText()) text = Clipboard.GetText(); } catch { }
-            if (string.IsNullOrEmpty(text)) return;
+        // Raised on the UI thread by ClipboardWatch when the OS clipboard changes.
+        void OnClipboardChanged() {
+            if (pendingClipOp == null) return;
+            if (clipboard.SequenceNumber <= pendingClipBaseline) return; // not genuinely advanced
+            string op = pendingClipOp;
+            pendingClipOp = null;
+            string text = ReadClipboardText();
+            if (!string.IsNullOrEmpty(text))
+                reconciler.FeedClipboard(DateTime.Now, op, text, monitor.Current);
+        }
 
-            ContextSnapshot s = monitor.Current;
-            string app = s != null && s.Process != null ? s.Process : "unknown";
-            string title = s != null ? s.Title : null;
-            string host = s != null ? s.Host : null;
-            string path = s != null ? s.Path : null;
-            writer.Enqueue(new CaptureRecord(DateTime.Now, app, title, host, path, via, text));
+        static string ReadClipboardText() {
+            try { if (Clipboard.ContainsText()) return Clipboard.GetText(); } catch { }
+            return null;
+        }
+
+        // Field worker callbacks (marshaled to the UI thread by FieldSnapshotClient).
+        void OnFieldSnapshot(string source, string text, string fieldId) {
+            reconciler.FeedFieldSnapshot(DateTime.Now, source, text, fieldId, monitor.Current);
+        }
+
+        void OnFieldGap(string code) {
+            // Field-worker status (FIELD_UNSUPPORTED, WORKER_*, etc.): show it in the
+            // live feed for diagnostics; not an error the user must act on.
+            if (!string.IsNullOrEmpty(code)) AppendLive("[field] " + code);
         }
 
         // Called on the writer's background thread after each successful write;
@@ -552,8 +616,11 @@ namespace TypingRecorder {
 
         protected override void OnFormClosing(FormClosingEventArgs e) {
             statusTimer.Stop();
-            try { if (capture != null) capture.Dispose(); } catch { }   // stop new chunks first
-            try { if (writer != null) writer.Dispose(); } catch { }      // then flush the queue
+            try { if (capture != null) capture.Dispose(); } catch { }        // stop new chunks first
+            try { if (fieldClient != null) fieldClient.Dispose(); } catch { } // stop the field worker
+            try { if (clipboard != null) clipboard.Dispose(); } catch { }     // stop the clipboard listener
+            try { if (reconciler != null) reconciler.FlushAll(); } catch { }  // commit any open session
+            try { if (writer != null) writer.Dispose(); } catch { }           // then flush the queue
             try { if (monitor != null) monitor.Dispose(); } catch { }
             base.OnFormClosing(e);
         }

@@ -102,3 +102,11 @@ Consent → Record → capture typing + app + site → Markdown → review → S
 - **2026-11-04** — Phase 0 complete (base committed to `main`). Roadmap locked.
   Landed: Phase 1.1 (coverage/diagnostics), 1.5 (secret redaction), and most of
   1.3 (AltGr, dead keys/ligatures, fast-typing write queue, IME safeguard).
+- **2026-11-05** — Phase 2–4 modules authored in parallel (19-agent workflow),
+  committed compile-green and dormant. **Phase 2 wired into Program.cs**:
+  CaptureReconciler sits in front of the writer (session grouping, paste folding,
+  AI-site Enter finalize); the out-of-process field worker and ClipboardWatch
+  feed it. Fixed a stray-BOM bug in the worker's stdin handshake that was killing
+  the field worker on spawn. Verified end-to-end at the process level — the
+  `--field-worker` child spawns on Record and exits on Stop, no crash. Capturing
+  actual field/clipboard *content* still needs physical typing to confirm.

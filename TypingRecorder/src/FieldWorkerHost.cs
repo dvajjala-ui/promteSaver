@@ -168,8 +168,11 @@ namespace TypingRecorder {
                     GC.KeepAlive(parent);
                 }
                 return 0;
-            } catch {
+            } catch (Exception ex) {
                 // Any startup/handshake failure: exit 2 so the parent reports a start failure.
+                // The detail goes to stderr, which the parent drains and discards; it is
+                // only visible when the worker is run directly for diagnostics.
+                try { Console.Error.WriteLine("FIELDWORKER_FATAL " + ex.GetType().FullName + ": " + ex.Message); } catch { }
                 return 2;
             }
         }

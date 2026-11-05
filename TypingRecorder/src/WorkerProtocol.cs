@@ -248,7 +248,13 @@ namespace TypingRecorder {
                             int end = bytes.Length;
                             if (end > 0 && bytes[end - 1] == 13) end--; // strip a trailing CR
                             try {
-                                return WorkerProtocol.Utf8.GetString(bytes, 0, end);
+                                string decoded = WorkerProtocol.Utf8.GetString(bytes, 0, end);
+                                // A redirected console stdin can surface a stray UTF-8 BOM on the
+                                // very first line; strip a leading U+FEFF so the START (and any)
+                                // protocol tag still matches. The Base64 payload is decoded
+                                // separately, so this never touches captured content.
+                                if (decoded.Length > 0 && decoded[0] == '﻿') decoded = decoded.Substring(1);
+                                return decoded;
                             } catch (DecoderFallbackException ex) {
                                 throw new InvalidDataException("Worker line was not valid UTF-8.", ex);
                             }
